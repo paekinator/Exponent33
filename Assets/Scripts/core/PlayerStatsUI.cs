@@ -46,7 +46,7 @@ public class PlayerStatsUI : MonoBehaviour
         GameObject characterTextObject = new GameObject("Character Info Text");
         characterTextObject.transform.SetParent(panelObject.transform, false);
         Text characterText = characterTextObject.AddComponent<Text>();
-        characterText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        characterText.font = GetDefaultFont();
         characterText.fontSize = 14;
         characterText.alignment = TextAnchor.UpperLeft;
         characterText.color = new Color(0.88f, 0.92f, 0.9f, 1f);
@@ -62,7 +62,7 @@ public class PlayerStatsUI : MonoBehaviour
         GameObject stopwatchObject = new GameObject("Stopwatch Text");
         stopwatchObject.transform.SetParent(canvasObject.transform, false);
         Text stopwatchText = stopwatchObject.AddComponent<Text>();
-        stopwatchText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        stopwatchText.font = GetDefaultFont();
         stopwatchText.fontSize = 24;
         stopwatchText.alignment = TextAnchor.UpperCenter;
         stopwatchText.color = Color.white;
@@ -111,7 +111,7 @@ public class PlayerStatsUI : MonoBehaviour
         GameObject labelObject = new GameObject(objectName + " Label");
         labelObject.transform.SetParent(rowObject.transform, false);
         Text labelText = labelObject.AddComponent<Text>();
-        labelText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        labelText.font = GetDefaultFont();
         labelText.fontSize = 11;
         labelText.alignment = TextAnchor.MiddleLeft;
         labelText.color = new Color(0.82f, 0.86f, 0.84f, 1f);
@@ -178,6 +178,11 @@ public class PlayerStatsUI : MonoBehaviour
 
         texture.Apply();
         return Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), size);
+    }
+
+    private static Font GetDefaultFont()
+    {
+        return Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
     }
 
     void Awake()

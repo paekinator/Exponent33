@@ -26,6 +26,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
     [Range(0f, 1f)] public float detailWallChance = 0.08f;
     [Range(0f, 1f)] public float shortSegmentChance = 0.18f;
     [Range(0f, 1f)] public float pillarSkipChance = 0.28f;
+    public bool capWallEndsWithPillars = true;
 
     private const string GeneratedRootName = "Generated_Backrooms_Maze";
     private const string GeneratedPieceName = "Generated_Backrooms_MazePiece";
@@ -62,8 +63,11 @@ public class BackroomsMazeGenerator : MonoBehaviour
 
         BuildStructuredMaze(root, min + 2, min + 2, 21, 24);
         BuildPillarField(root, min + 28, min + 7, 14, 16);
+        BuildDensePillarSection(root, min + 7, min + 8, 13, 12);
+        BuildDensePillarSection(root, min + 34, min + 35, 9, 9);
         BuildBrokenOfficeRuns(root, min + 7, min + 31, 30, 10);
         BuildDoorCluster(root, min + 30, min + 28, 13, 14);
+        BuildPillarMazeSection(root, min + 17, min + 18, 12, 11);
         BuildLooseStrays(root, min, max, 75);
     }
 
@@ -107,6 +111,51 @@ public class BackroomsMazeGenerator : MonoBehaviour
         AddWallRun(root, false, startX - 1, startZ - 1, width + 2, 4);
         AddWallRun(root, true, startX - 1, startZ - 1, height + 2, 4);
         AddWallRun(root, false, startX - 1, startZ + height + 1, width + 2, 4);
+    }
+
+    private void BuildDensePillarSection(Transform root, int startX, int startZ, int width, int height)
+    {
+        for (int x = startX; x <= startX + width; x += 2)
+        {
+            for (int z = startZ; z <= startZ + height; z += 2)
+            {
+                if (random.NextDouble() < 0.12f)
+                {
+                    continue;
+                }
+
+                CreatePillar(root, x, z);
+            }
+        }
+
+        AddWallRun(root, false, startX - 1, startZ - 1, width + 2, 0);
+        AddWallRun(root, true, startX - 1, startZ - 1, height + 2, 0);
+        AddWallRun(root, false, startX - 1, startZ + height + 1, width + 2, 3);
+        AddWallRun(root, true, startX + width + 1, startZ - 1, height + 2, 3);
+    }
+
+    private void BuildPillarMazeSection(Transform root, int startX, int startZ, int width, int height)
+    {
+        for (int x = startX; x <= startX + width; x += 2)
+        {
+            AddWallRun(root, true, x, startZ, height, RandomRange(3, 5));
+        }
+
+        for (int z = startZ; z <= startZ + height; z += 2)
+        {
+            AddWallRun(root, false, startX, z, width, RandomRange(3, 5));
+        }
+
+        for (int i = 0; i < 36; i++)
+        {
+            int x = RandomRange(startX, startX + width + 1);
+            int z = RandomRange(startZ, startZ + height + 1);
+
+            if ((x + z) % 2 == 0)
+            {
+                CreatePillar(root, x, z);
+            }
+        }
     }
 
     private void BuildBrokenOfficeRuns(Transform root, int startX, int startZ, int width, int height)
@@ -198,6 +247,20 @@ public class BackroomsMazeGenerator : MonoBehaviour
             : new Vector3(CellCenter(gridX), 0f, GridLine(gridZ));
         float rotation = vertical ? 90f : 0f;
         CreatePiece(root, prefab, "Wall_" + key, position, rotation);
+
+        if (capWallEndsWithPillars)
+        {
+            if (vertical)
+            {
+                CreatePillar(root, gridX, gridZ);
+                CreatePillar(root, gridX, gridZ + 1);
+            }
+            else
+            {
+                CreatePillar(root, gridX, gridZ);
+                CreatePillar(root, gridX + 1, gridZ);
+            }
+        }
     }
 
     private void CreatePillar(Transform root, int gridX, int gridZ)

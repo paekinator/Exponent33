@@ -12,12 +12,14 @@ public class MainMenu : MonoBehaviour
     public Slider musicSlider;
     public Slider sfxSlider;
 
+
     public void Start() {
         LoadVolume();
-        MusicManager.Instance.PlayMusic("MainMenu");
+        MusicManager.Instance.PlayMusic("MainMenu", 0f);
     }
     public void Play() {
         SceneManager.LoadScene("Game");
+        MusicManager.Instance.PlayMusic("Game", 0.5f);
     }
 
     public void Quit() {
@@ -41,7 +43,7 @@ public class MainMenu : MonoBehaviour
     }
 
     public void LoadVolume() {
-        musicSlider.value = PlayerPrefs.GetFloat("MusicVolume");
-        sfxSlider.value = PlayerPrefs.GetFloat("SFXVolume");
+        musicSlider.value = (float)PlayerPrefs.GetFloat("MusicVolume");
+        sfxSlider.value = (float)PlayerPrefs.GetFloat("SFXVolume");
     }
 }

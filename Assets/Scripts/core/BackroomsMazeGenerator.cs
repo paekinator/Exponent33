@@ -59,17 +59,121 @@ public class BackroomsMazeGenerator : MonoBehaviour
         int min = -2;
         int max = cellCount + 2;
 
-        BuildWestMazeBiome(root, min + 2, min + 2);
-        BuildSouthPillarBiome(root, min + 28, min + 4);
-        BuildCentralPillarForest(root, min + 15, min + 18);
-        BuildLongCorridorBiome(root, min + 4, min + 30);
-        BuildDoorRoomBiome(root, min + 30, min + 27);
-        BuildBrokenWallBiome(root, min + 8, min + 39);
-        BuildSparseTransitionPieces(root, min, max);
-        BuildBackroomsCorridorFill(root, min, max);
-        BuildEdgeToEdgeHallwayFill(root, min, max);
+        BuildEightThemeZones(root, min, max);
+        BuildCoordinateReferencePortal(root);
         BuildAccessSpine(root, min, max);
-        BuildStandalonePillarBiomes(root, min, max);
+    }
+
+    private void BuildEightThemeZones(Transform root, int min, int max)
+    {
+        int[] columns = { min, 12, 25, 38, max };
+        int[] rows = { min, 25, max };
+
+        BuildLongHallTheme(root, columns[0], rows[0], columns[1], rows[1]);
+        BuildPillarOnlyTheme(root, columns[1], rows[0], columns[2], rows[1]);
+        BuildDoorPortalTheme(root, columns[2], rows[0], columns[3], rows[1]);
+        BuildDenseWallTheme(root, columns[3], rows[0], columns[4], rows[1]);
+
+        BuildBrokenMazeTheme(root, columns[0], rows[1], columns[1], rows[2]);
+        BuildPillarHallTheme(root, columns[1], rows[1], columns[2], rows[2]);
+        BuildLongHallTheme(root, columns[2], rows[1], columns[3], rows[2]);
+        BuildDoorPortalTheme(root, columns[3], rows[1], columns[4], rows[2]);
+
+        for (int i = 1; i < columns.Length - 1; i++)
+        {
+            AddPortalOpening(root, true, columns[i], rows[0] + 8, true);
+            AddPortalOpening(root, true, columns[i], rows[1] + 10, i % 2 == 0);
+            AddPortalOpening(root, true, columns[i], rows[1] + 19, false);
+        }
+
+        AddPortalOpening(root, false, columns[0] + 7, rows[1], false);
+        AddPortalOpening(root, false, columns[1] + 6, rows[1], true);
+        AddPortalOpening(root, false, columns[2] + 6, rows[1], false);
+        AddPortalOpening(root, false, columns[3] + 7, rows[1], true);
+    }
+
+    private void BuildLongHallTheme(Transform root, int minX, int minZ, int maxX, int maxZ)
+    {
+        int width = maxX - minX + 1;
+        for (int z = minZ + 2; z <= maxZ - 2; z += 4)
+        {
+            AddWallRun(root, false, minX, z, width, BuildRegularGaps(width, 5, PositiveModulo(z, 5) + 1), WallKind.Standard);
+        }
+
+        for (int x = minX + 4; x <= maxX - 2; x += 6)
+        {
+            AddWallRun(root, true, x, minZ + 1, maxZ - minZ, BuildRegularGaps(maxZ - minZ, 7, 3), WallKind.Standard);
+        }
+    }
+
+    private void BuildPillarOnlyTheme(Transform root, int minX, int minZ, int maxX, int maxZ)
+    {
+        for (int x = minX + 2; x <= maxX - 2; x += 2)
+        {
+            for (int z = minZ + 2; z <= maxZ - 2; z += 2)
+            {
+                if ((x + z) % 8 != 0)
+                {
+                    CreatePillar(root, x, z);
+                }
+            }
+        }
+    }
+
+    private void BuildDoorPortalTheme(Transform root, int minX, int minZ, int maxX, int maxZ)
+    {
+        BuildLongHallTheme(root, minX, minZ, maxX, maxZ);
+
+        for (int z = minZ + 5; z <= maxZ - 4; z += 7)
+        {
+            AddPortalOpening(root, false, minX + 4, z, z % 2 == 0);
+            AddPortalOpening(root, true, minX + 8, z + 2, false);
+        }
+    }
+
+    private void BuildDenseWallTheme(Transform root, int minX, int minZ, int maxX, int maxZ)
+    {
+        for (int x = minX + 2; x <= maxX - 2; x += 3)
+        {
+            AddWallRun(root, true, x, minZ + 1, maxZ - minZ, BuildRegularGaps(maxZ - minZ, 4, PositiveModulo(x, 4) + 1), WallKind.Standard);
+        }
+
+        for (int z = minZ + 3; z <= maxZ - 3; z += 5)
+        {
+            AddWallRun(root, false, minX + 1, z, maxX - minX, BuildRegularGaps(maxX - minX, 5, 2), WallKind.Standard);
+        }
+    }
+
+    private void BuildBrokenMazeTheme(Transform root, int minX, int minZ, int maxX, int maxZ)
+    {
+        for (int z = minZ + 2; z <= maxZ - 2; z += 3)
+        {
+            AddWallRun(root, false, minX + 1, z, maxX - minX - 1, BuildRegularGaps(maxX - minX - 1, 4, z % 3 + 1), WallKind.Standard);
+        }
+
+        for (int x = minX + 3; x <= maxX - 2; x += 5)
+        {
+            AddWallRun(root, true, x, minZ + 2, maxZ - minZ - 3, BuildRegularGaps(maxZ - minZ - 3, 5, x % 4 + 1), WallKind.Standard);
+        }
+    }
+
+    private void BuildPillarHallTheme(Transform root, int minX, int minZ, int maxX, int maxZ)
+    {
+        BuildLongHallTheme(root, minX, minZ, maxX, maxZ);
+
+        for (int x = minX + 2; x <= maxX - 2; x += 3)
+        {
+            for (int z = minZ + 3; z <= maxZ - 3; z += 4)
+            {
+                CreatePillar(root, x, z);
+            }
+        }
+    }
+
+    private void BuildCoordinateReferencePortal(Transform root)
+    {
+        AddPortalOpening(root, false, 46, 6, true);
+        AddPortalOpening(root, true, 47, 6, false);
     }
 
     private void BuildWestMazeBiome(Transform root, int startX, int startZ)
@@ -353,6 +457,30 @@ public class BackroomsMazeGenerator : MonoBehaviour
         {
             CreateWall(root, vertical, gridX, gridZ, WallKind.Door);
             CapWallSegment(root, vertical, true, gridX, gridZ, gridX, gridZ);
+        }
+    }
+
+    private void AddPortalOpening(Transform root, bool vertical, int gridX, int gridZ, bool useDoor)
+    {
+        if (useDoor)
+        {
+            AddDoorWall(root, vertical, gridX, gridZ);
+            return;
+        }
+
+        if (vertical)
+        {
+            CreatePillar(root, gridX, gridZ);
+            CreatePillar(root, gridX, gridZ + 1);
+            AddWallRun(root, true, gridX, gridZ - 3, 3, null, WallKind.Standard);
+            AddWallRun(root, true, gridX, gridZ + 2, 3, null, WallKind.Standard);
+        }
+        else
+        {
+            CreatePillar(root, gridX, gridZ);
+            CreatePillar(root, gridX + 1, gridZ);
+            AddWallRun(root, false, gridX - 3, gridZ, 3, null, WallKind.Standard);
+            AddWallRun(root, false, gridX + 2, gridZ, 3, null, WallKind.Standard);
         }
     }
 

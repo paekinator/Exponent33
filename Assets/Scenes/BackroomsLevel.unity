@@ -1655,11 +1655,8 @@ MonoBehaviour:
   - {fileID: 2213082196249107394, guid: 2945ee05d21776c4ea20337d39044807, type: 3}
   - {fileID: 5991211558091309780, guid: 872e675da07ca6d4c9a552e9dc531f82, type: 3}
   - {fileID: 7938413824144776762, guid: ca5df1f94b0ea9c4f9e2f72ddfcf6473, type: 3}
-  detailWallPrefabs:
-  - {fileID: 2995444487488039049, guid: 093b2c3294ecd334ba4774620f5e050b, type: 3}
   pillarPrefabs:
   - {fileID: 3519111060552662047, guid: 29b641f3274cf4748a665a543dc07dfc, type: 3}
-  - {fileID: 4001333941558229702, guid: 75fd6002eb5ec2d41b9b4432062c6c26, type: 3}
   mapSize: 200
   tileSize: 4
   borderTilePadding: 3

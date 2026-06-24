@@ -11,7 +11,6 @@ public class BackroomsMazeGenerator : MonoBehaviour
     [Header("Prefabs")]
     public GameObject wallPrefab;
     public GameObject[] doorWallPrefabs;
-    public GameObject[] detailWallPrefabs;
     public GameObject[] pillarPrefabs;
 
     [Header("Grid")]
@@ -32,8 +31,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
     private enum WallKind
     {
         Standard,
-        Door,
-        Detail
+        Door
     }
 
     private void OnEnable()
@@ -69,6 +67,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
         BuildBrokenWallBiome(root, min + 8, min + 39);
         BuildSparseTransitionPieces(root, min, max);
         BuildBackroomsCorridorFill(root, min, max);
+        BuildEdgeToEdgeHallwayFill(root, min, max);
         BuildStandalonePillarBiomes(root, min, max);
     }
 
@@ -81,10 +80,10 @@ public class BackroomsMazeGenerator : MonoBehaviour
 
         AddWallRun(root, true, startX + 4, startZ + 1, 17, new[] { 4, 11 }, WallKind.Standard);
         AddWallRun(root, true, startX + 8, startZ + 3, 15, new[] { 6, 12 }, WallKind.Standard);
-        AddWallRun(root, true, startX + 13, startZ + 1, 18, new[] { 3, 9, 15 }, WallKind.Detail);
+        AddWallRun(root, true, startX + 13, startZ + 1, 18, new[] { 3, 9, 15 }, WallKind.Standard);
         AddWallRun(root, false, startX + 1, startZ + 5, 18, new[] { 2, 8, 14 }, WallKind.Standard);
         AddWallRun(root, false, startX + 3, startZ + 12, 17, new[] { 5, 11 }, WallKind.Standard);
-        AddWallRun(root, false, startX, startZ + 17, 20, new[] { 3, 16 }, WallKind.Detail);
+        AddWallRun(root, false, startX, startZ + 17, 20, new[] { 3, 16 }, WallKind.Standard);
 
         AddDoorWall(root, false, startX + 8, startZ + 7);
         AddDoorWall(root, true, startX + 11, startZ + 12);
@@ -109,7 +108,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
         }
 
         AddWallRun(root, false, startX + 1, startZ + 5, 13, new[] { 4, 9 }, WallKind.Standard);
-        AddWallRun(root, false, startX + 1, startZ + 11, 13, new[] { 2, 10 }, WallKind.Detail);
+        AddWallRun(root, false, startX + 1, startZ + 11, 13, new[] { 2, 10 }, WallKind.Standard);
         AddWallRun(root, true, startX + 5, startZ + 2, 14, new[] { 5, 8 }, WallKind.Standard);
         AddWallRun(root, true, startX + 11, startZ + 1, 15, new[] { 7, 12 }, WallKind.Standard);
     }
@@ -131,7 +130,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
 
         AddWallRun(root, true, startX - 1, startZ - 1, 13, new[] { 3, 9 }, WallKind.Standard);
         AddWallRun(root, false, startX - 1, startZ - 1, 15, new[] { 6, 12 }, WallKind.Standard);
-        AddWallRun(root, true, startX + 14, startZ, 11, new[] { 5 }, WallKind.Detail);
+        AddWallRun(root, true, startX + 14, startZ, 11, new[] { 5 }, WallKind.Standard);
         AddWallRun(root, false, startX, startZ + 12, 13, new[] { 4, 10 }, WallKind.Standard);
     }
 
@@ -139,7 +138,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
     {
         AddWallRun(root, false, startX, startZ, 39, new[] { 8, 18, 29 }, WallKind.Standard);
         AddWallRun(root, false, startX, startZ + 5, 39, new[] { 5, 15, 25, 35 }, WallKind.Standard);
-        AddWallRun(root, false, startX + 2, startZ + 10, 35, new[] { 12, 24 }, WallKind.Detail);
+        AddWallRun(root, false, startX + 2, startZ + 10, 35, new[] { 12, 24 }, WallKind.Standard);
 
         for (int x = startX + 4; x <= startX + 34; x += 6)
         {
@@ -162,10 +161,10 @@ public class BackroomsMazeGenerator : MonoBehaviour
             }
         }
 
-        AddWallRun(root, true, startX + 4, startZ, 16, new[] { 2, 7, 13 }, WallKind.Detail);
+        AddWallRun(root, true, startX + 4, startZ, 16, new[] { 2, 7, 13 }, WallKind.Standard);
         AddWallRun(root, true, startX + 8, startZ, 16, new[] { 4, 10 }, WallKind.Standard);
         AddWallRun(root, false, startX, startZ + 4, 16, new[] { 3, 9, 14 }, WallKind.Standard);
-        AddWallRun(root, false, startX, startZ + 8, 16, new[] { 6, 12 }, WallKind.Detail);
+        AddWallRun(root, false, startX, startZ + 8, 16, new[] { 6, 12 }, WallKind.Standard);
 
         AddDoorWall(root, false, startX + 2, startZ + 4);
         AddDoorWall(root, true, startX + 4, startZ + 6);
@@ -176,12 +175,12 @@ public class BackroomsMazeGenerator : MonoBehaviour
     private void BuildBrokenWallBiome(Transform root, int startX, int startZ)
     {
         AddWallRun(root, false, startX, startZ, 27, new[] { 2, 6, 11, 17, 23 }, WallKind.Standard);
-        AddWallRun(root, false, startX + 2, startZ + 4, 25, new[] { 4, 8, 15, 21 }, WallKind.Detail);
+        AddWallRun(root, false, startX + 2, startZ + 4, 25, new[] { 4, 8, 15, 21 }, WallKind.Standard);
         AddWallRun(root, false, startX, startZ + 8, 30, new[] { 5, 9, 14, 20, 27 }, WallKind.Standard);
 
         AddWallRun(root, true, startX + 3, startZ, 8, new[] { 3, 6 }, WallKind.Standard);
         AddWallRun(root, true, startX + 12, startZ + 1, 7, new[] { 2, 5 }, WallKind.Standard);
-        AddWallRun(root, true, startX + 21, startZ, 8, new[] { 4 }, WallKind.Detail);
+        AddWallRun(root, true, startX + 21, startZ, 8, new[] { 4 }, WallKind.Standard);
 
         for (int x = startX + 5; x <= startX + 27; x += 7)
         {
@@ -193,7 +192,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
     private void BuildSparseTransitionPieces(Transform root, int min, int max)
     {
         AddWallRun(root, true, min + 24, min + 4, 9, new[] { 2, 6 }, WallKind.Standard);
-        AddWallRun(root, false, min + 19, min + 15, 11, new[] { 4 }, WallKind.Detail);
+        AddWallRun(root, false, min + 19, min + 15, 11, new[] { 4 }, WallKind.Standard);
         AddWallRun(root, true, min + 26, min + 33, 10, new[] { 3, 8 }, WallKind.Standard);
         AddWallRun(root, false, min + 6, max - 6, 14, new[] { 5, 10 }, WallKind.Standard);
 
@@ -209,14 +208,14 @@ public class BackroomsMazeGenerator : MonoBehaviour
         for (int z = min + 6; z <= max - 8; z += 7)
         {
             AddWallRun(root, false, min + 4, z, 12, new[] { 4, 9 }, WallKind.Standard);
-            AddWallRun(root, false, min + 20, z + 2, 10, new[] { 5 }, WallKind.Detail);
+            AddWallRun(root, false, min + 20, z + 2, 10, new[] { 5 }, WallKind.Standard);
             AddWallRun(root, false, max - 18, z, 12, new[] { 3, 8 }, WallKind.Standard);
         }
 
         for (int x = min + 10; x <= max - 10; x += 8)
         {
             AddWallRun(root, true, x, min + 5, 9, new[] { 4 }, WallKind.Standard);
-            AddWallRun(root, true, x + 3, min + 20, 10, new[] { 2, 7 }, WallKind.Detail);
+            AddWallRun(root, true, x + 3, min + 20, 10, new[] { 2, 7 }, WallKind.Standard);
             AddWallRun(root, true, x, max - 18, 11, new[] { 5 }, WallKind.Standard);
         }
 
@@ -238,6 +237,23 @@ public class BackroomsMazeGenerator : MonoBehaviour
         BuildPillarIsland(root, min + 12, min + 27);
         BuildPillarIsland(root, min + 41, min + 13);
         BuildPillarIsland(root, max - 11, max - 7);
+    }
+
+    private void BuildEdgeToEdgeHallwayFill(Transform root, int min, int max)
+    {
+        int length = max - min - 1;
+
+        for (int z = min + 4; z <= max - 4; z += 5)
+        {
+            int[] gaps = z % 10 == 0 ? new[] { 9, 21, 34 } : new[] { 14, 28 };
+            AddWallRun(root, false, min + 1, z, length, gaps, WallKind.Standard);
+        }
+
+        for (int x = min + 6; x <= max - 6; x += 7)
+        {
+            int[] gaps = x % 14 == 0 ? new[] { 8, 19, 31 } : new[] { 12, 25 };
+            AddWallRun(root, true, x, min + 1, length, gaps, WallKind.Standard);
+        }
     }
 
     private void BuildPillarGrid(Transform root, int startX, int startZ, int width, int height, int spacing)
@@ -334,13 +350,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
             segmentEndX = x;
             segmentEndZ = z;
 
-            WallKind resolvedKind = kind;
-            if (kind == WallKind.Standard && ((x * 7) + (z * 3)) % 17 == 0)
-            {
-                resolvedKind = WallKind.Detail;
-            }
-
-            CreateWall(root, vertical, x, z, resolvedKind);
+            CreateWall(root, vertical, x, z, kind);
         }
 
         CapWallSegment(root, vertical, hasActiveSegment, segmentStartX, segmentStartZ, segmentEndX, segmentEndZ);
@@ -403,7 +413,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
             return;
         }
 
-        GameObject prefab = pillarPrefabs[PositiveModulo(gridX + gridZ, pillarPrefabs.Length)];
+        GameObject prefab = pillarPrefabs[0];
         Vector3 position = new Vector3(GridLine(gridX), 0f, GridLine(gridZ));
         float rotation = PositiveModulo((gridX * 2) + gridZ, 4) * 90f;
         CreatePiece(root, prefab, "Pillar_" + key, position, rotation);
@@ -414,11 +424,6 @@ public class BackroomsMazeGenerator : MonoBehaviour
         if (kind == WallKind.Door && doorWallPrefabs != null && doorWallPrefabs.Length > 0)
         {
             return doorWallPrefabs[PositiveModulo((gridX * 3) + gridZ, doorWallPrefabs.Length)];
-        }
-
-        if (kind == WallKind.Detail && detailWallPrefabs != null && detailWallPrefabs.Length > 0)
-        {
-            return detailWallPrefabs[PositiveModulo(gridX + (gridZ * 5), detailWallPrefabs.Length)];
         }
 
         return wallPrefab;

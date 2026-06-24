@@ -68,6 +68,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
         BuildSparseTransitionPieces(root, min, max);
         BuildBackroomsCorridorFill(root, min, max);
         BuildEdgeToEdgeHallwayFill(root, min, max);
+        BuildAccessSpine(root, min, max);
         BuildStandalonePillarBiomes(root, min, max);
     }
 
@@ -237,15 +238,26 @@ public class BackroomsMazeGenerator : MonoBehaviour
 
         for (int z = min; z <= max; z += 4)
         {
-            int[] gaps = z % 10 == 0 ? new[] { 9, 21, 34 } : new[] { 14, 28 };
+            int[] gaps = BuildRegularGaps(length, 6, PositiveModulo(z, 6) + 2);
             AddWallRun(root, false, min, z, length, gaps, WallKind.Standard);
         }
 
         for (int x = min + 3; x <= max; x += 6)
         {
-            int[] gaps = x % 14 == 0 ? new[] { 8, 19, 31 } : new[] { 12, 25 };
+            int[] gaps = BuildRegularGaps(length, 7, PositiveModulo(x, 7) + 2);
             AddWallRun(root, true, x, min, length, gaps, WallKind.Standard);
         }
+    }
+
+    private void BuildAccessSpine(Transform root, int min, int max)
+    {
+        int middle = Mathf.RoundToInt((min + max) * 0.5f);
+        int length = max - min + 1;
+
+        AddWallRun(root, false, min, middle - 2, length, BuildRegularGaps(length, 4, 2), WallKind.Standard);
+        AddWallRun(root, false, min, middle + 2, length, BuildRegularGaps(length, 4, 3), WallKind.Standard);
+        AddWallRun(root, true, middle - 2, min, length, BuildRegularGaps(length, 5, 2), WallKind.Standard);
+        AddWallRun(root, true, middle + 2, min, length, BuildRegularGaps(length, 5, 3), WallKind.Standard);
     }
 
     private void BuildPillarGrid(Transform root, int startX, int startZ, int width, int height, int spacing)
@@ -288,11 +300,13 @@ public class BackroomsMazeGenerator : MonoBehaviour
     {
         int doorX = Mathf.Max(1, width / 2);
         int doorZ = Mathf.Max(1, height / 2);
+        int[] horizontalGaps = BuildRoomGaps(width, doorX);
+        int[] verticalGaps = BuildRoomGaps(height, doorZ);
 
-        AddWallRun(root, false, startX, startZ, width, doorwaySide == 0 ? new[] { doorX } : null, WallKind.Standard);
-        AddWallRun(root, true, startX + width, startZ, height, doorwaySide == 1 ? new[] { doorZ } : null, WallKind.Standard);
-        AddWallRun(root, false, startX, startZ + height, width, doorwaySide == 2 ? new[] { doorX } : null, WallKind.Standard);
-        AddWallRun(root, true, startX, startZ, height, doorwaySide == 3 ? new[] { doorZ } : null, WallKind.Standard);
+        AddWallRun(root, false, startX, startZ, width, doorwaySide == 0 ? horizontalGaps : BuildSecondaryRoomGaps(width), WallKind.Standard);
+        AddWallRun(root, true, startX + width, startZ, height, doorwaySide == 1 ? verticalGaps : BuildSecondaryRoomGaps(height), WallKind.Standard);
+        AddWallRun(root, false, startX, startZ + height, width, doorwaySide == 2 ? horizontalGaps : BuildSecondaryRoomGaps(width), WallKind.Standard);
+        AddWallRun(root, true, startX, startZ, height, doorwaySide == 3 ? verticalGaps : BuildSecondaryRoomGaps(height), WallKind.Standard);
 
         // Room boxes use open gaps. Actual door prefabs are placed sparingly by the biome methods.
     }
@@ -442,6 +456,46 @@ public class BackroomsMazeGenerator : MonoBehaviour
         }
 
         return false;
+    }
+
+    private static int[] BuildRoomGaps(int length, int primaryGap)
+    {
+        if (length <= 4)
+        {
+            return new[] { Mathf.Clamp(primaryGap, 1, Mathf.Max(1, length - 1)) };
+        }
+
+        return new[]
+        {
+            Mathf.Clamp(primaryGap, 1, length - 1),
+            Mathf.Clamp(2, 1, length - 1),
+            Mathf.Clamp(length - 2, 1, length - 1)
+        };
+    }
+
+    private static int[] BuildSecondaryRoomGaps(int length)
+    {
+        if (length <= 4)
+        {
+            return new[] { Mathf.Clamp(length / 2, 1, Mathf.Max(1, length - 1)) };
+        }
+
+        return new[]
+        {
+            Mathf.Clamp(length / 3, 1, length - 1),
+            Mathf.Clamp((length * 2) / 3, 1, length - 1)
+        };
+    }
+
+    private static int[] BuildRegularGaps(int length, int interval, int offset)
+    {
+        List<int> gaps = new List<int>();
+        for (int i = Mathf.Max(1, offset); i < length - 1; i += interval)
+        {
+            gaps.Add(i);
+        }
+
+        return gaps.ToArray();
     }
 
     private static int PositiveModulo(int value, int length)

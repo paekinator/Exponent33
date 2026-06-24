@@ -69,15 +69,15 @@ public class BackroomsMazeGenerator : MonoBehaviour
         int[] columns = { min, 12, 25, 38, max };
         int[] rows = { min, 25, max };
 
-        BuildLongHallTheme(root, columns[0], rows[0], columns[1], rows[1]);
+        BuildOpenFloorTheme(root, columns[0], rows[0], columns[1], rows[1]);
         BuildPillarOnlyTheme(root, columns[1], rows[0], columns[2], rows[1]);
         BuildDoorPortalTheme(root, columns[2], rows[0], columns[3], rows[1]);
-        BuildDenseWallTheme(root, columns[3], rows[0], columns[4], rows[1]);
+        BuildSparseWallTheme(root, columns[3], rows[0], columns[4], rows[1]);
 
         BuildBrokenMazeTheme(root, columns[0], rows[1], columns[1], rows[2]);
         BuildPillarHallTheme(root, columns[1], rows[1], columns[2], rows[2]);
         BuildLongHallTheme(root, columns[2], rows[1], columns[3], rows[2]);
-        BuildDoorPortalTheme(root, columns[3], rows[1], columns[4], rows[2]);
+        BuildOpenFloorTheme(root, columns[3], rows[1], columns[4], rows[2]);
 
         for (int i = 1; i < columns.Length - 1; i++)
         {
@@ -95,14 +95,31 @@ public class BackroomsMazeGenerator : MonoBehaviour
     private void BuildLongHallTheme(Transform root, int minX, int minZ, int maxX, int maxZ)
     {
         int width = maxX - minX + 1;
-        for (int z = minZ + 2; z <= maxZ - 2; z += 4)
+        for (int z = minZ + 3; z <= maxZ - 3; z += 8)
         {
-            AddWallRun(root, false, minX, z, width, BuildRegularGaps(width, 5, PositiveModulo(z, 5) + 1), WallKind.Standard);
+            AddWallRun(root, false, minX, z, width, BuildRegularGaps(width, 4, PositiveModulo(z, 4) + 1), WallKind.Standard);
         }
 
-        for (int x = minX + 4; x <= maxX - 2; x += 6)
+        for (int x = minX + 5; x <= maxX - 3; x += 10)
         {
-            AddWallRun(root, true, x, minZ + 1, maxZ - minZ, BuildRegularGaps(maxZ - minZ, 7, 3), WallKind.Standard);
+            AddWallRun(root, true, x, minZ + 2, maxZ - minZ - 2, BuildRegularGaps(maxZ - minZ - 2, 5, 2), WallKind.Standard);
+        }
+    }
+
+    private void BuildOpenFloorTheme(Transform root, int minX, int minZ, int maxX, int maxZ)
+    {
+        AddWallRun(root, false, minX + 2, minZ + 5, maxX - minX - 4, BuildRegularGaps(maxX - minX - 4, 4, 2), WallKind.Standard);
+        AddWallRun(root, true, minX + 6, minZ + 4, maxZ - minZ - 6, BuildRegularGaps(maxZ - minZ - 6, 5, 2), WallKind.Standard);
+
+        for (int x = minX + 3; x <= maxX - 3; x += 5)
+        {
+            for (int z = minZ + 4; z <= maxZ - 4; z += 6)
+            {
+                if ((x + z) % 3 == 0)
+                {
+                    CreatePillar(root, x, z);
+                }
+            }
         }
     }
 
@@ -124,36 +141,35 @@ public class BackroomsMazeGenerator : MonoBehaviour
     {
         BuildLongHallTheme(root, minX, minZ, maxX, maxZ);
 
-        for (int z = minZ + 5; z <= maxZ - 4; z += 7)
+        for (int z = minZ + 6; z <= maxZ - 5; z += 10)
         {
             AddPortalOpening(root, false, minX + 4, z, z % 2 == 0);
-            AddPortalOpening(root, true, minX + 8, z + 2, false);
         }
     }
 
-    private void BuildDenseWallTheme(Transform root, int minX, int minZ, int maxX, int maxZ)
+    private void BuildSparseWallTheme(Transform root, int minX, int minZ, int maxX, int maxZ)
     {
-        for (int x = minX + 2; x <= maxX - 2; x += 3)
+        for (int x = minX + 3; x <= maxX - 3; x += 7)
         {
-            AddWallRun(root, true, x, minZ + 1, maxZ - minZ, BuildRegularGaps(maxZ - minZ, 4, PositiveModulo(x, 4) + 1), WallKind.Standard);
+            AddWallRun(root, true, x, minZ + 2, maxZ - minZ - 3, BuildRegularGaps(maxZ - minZ - 3, 4, 2), WallKind.Standard);
         }
 
-        for (int z = minZ + 3; z <= maxZ - 3; z += 5)
+        for (int z = minZ + 5; z <= maxZ - 5; z += 9)
         {
-            AddWallRun(root, false, minX + 1, z, maxX - minX, BuildRegularGaps(maxX - minX, 5, 2), WallKind.Standard);
+            AddWallRun(root, false, minX + 2, z, maxX - minX - 3, BuildRegularGaps(maxX - minX - 3, 4, 2), WallKind.Standard);
         }
     }
 
     private void BuildBrokenMazeTheme(Transform root, int minX, int minZ, int maxX, int maxZ)
     {
-        for (int z = minZ + 2; z <= maxZ - 2; z += 3)
+        for (int z = minZ + 3; z <= maxZ - 3; z += 6)
         {
-            AddWallRun(root, false, minX + 1, z, maxX - minX - 1, BuildRegularGaps(maxX - minX - 1, 4, z % 3 + 1), WallKind.Standard);
+            AddWallRun(root, false, minX + 1, z, maxX - minX - 2, BuildRegularGaps(maxX - minX - 2, 4, z % 3 + 1), WallKind.Standard);
         }
 
-        for (int x = minX + 3; x <= maxX - 2; x += 5)
+        for (int x = minX + 4; x <= maxX - 3; x += 8)
         {
-            AddWallRun(root, true, x, minZ + 2, maxZ - minZ - 3, BuildRegularGaps(maxZ - minZ - 3, 5, x % 4 + 1), WallKind.Standard);
+            AddWallRun(root, true, x, minZ + 3, maxZ - minZ - 5, BuildRegularGaps(maxZ - minZ - 5, 5, x % 4 + 1), WallKind.Standard);
         }
     }
 
@@ -358,10 +374,8 @@ public class BackroomsMazeGenerator : MonoBehaviour
         int middle = Mathf.RoundToInt((min + max) * 0.5f);
         int length = max - min + 1;
 
-        AddWallRun(root, false, min, middle - 2, length, BuildRegularGaps(length, 4, 2), WallKind.Standard);
-        AddWallRun(root, false, min, middle + 2, length, BuildRegularGaps(length, 4, 3), WallKind.Standard);
-        AddWallRun(root, true, middle - 2, min, length, BuildRegularGaps(length, 5, 2), WallKind.Standard);
-        AddWallRun(root, true, middle + 2, min, length, BuildRegularGaps(length, 5, 3), WallKind.Standard);
+        AddWallRun(root, false, min, middle - 2, length, BuildRegularGaps(length, 3, 1), WallKind.Standard);
+        AddWallRun(root, true, middle + 2, min, length, BuildRegularGaps(length, 3, 2), WallKind.Standard);
     }
 
     private void BuildPillarGrid(Transform root, int startX, int startZ, int width, int height, int spacing)

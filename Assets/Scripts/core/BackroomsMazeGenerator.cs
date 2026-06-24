@@ -68,6 +68,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
         BuildDoorRoomBiome(root, min + 30, min + 27);
         BuildBrokenWallBiome(root, min + 8, min + 39);
         BuildSparseTransitionPieces(root, min, max);
+        BuildBackroomsCorridorFill(root, min, max);
         BuildStandalonePillarBiomes(root, min, max);
     }
 
@@ -203,6 +204,28 @@ public class BackroomsMazeGenerator : MonoBehaviour
         CreatePillar(root, min + 8, max - 5);
     }
 
+    private void BuildBackroomsCorridorFill(Transform root, int min, int max)
+    {
+        for (int z = min + 6; z <= max - 8; z += 7)
+        {
+            AddWallRun(root, false, min + 4, z, 12, new[] { 4, 9 }, WallKind.Standard);
+            AddWallRun(root, false, min + 20, z + 2, 10, new[] { 5 }, WallKind.Detail);
+            AddWallRun(root, false, max - 18, z, 12, new[] { 3, 8 }, WallKind.Standard);
+        }
+
+        for (int x = min + 10; x <= max - 10; x += 8)
+        {
+            AddWallRun(root, true, x, min + 5, 9, new[] { 4 }, WallKind.Standard);
+            AddWallRun(root, true, x + 3, min + 20, 10, new[] { 2, 7 }, WallKind.Detail);
+            AddWallRun(root, true, x, max - 18, 11, new[] { 5 }, WallKind.Standard);
+        }
+
+        AddRoomBox(root, min + 4, min + 18, 7, 6, 1);
+        AddRoomBox(root, min + 33, min + 6, 8, 7, 3);
+        AddRoomBox(root, min + 36, min + 22, 7, 8, 0);
+        AddRoomBox(root, min + 18, max - 12, 9, 7, 2);
+    }
+
     private void BuildStandalonePillarBiomes(Transform root, int min, int max)
     {
         BuildPillarGrid(root, min + 5, min + 22, 7, 9, 2);
@@ -283,20 +306,33 @@ public class BackroomsMazeGenerator : MonoBehaviour
 
     private void AddWallRun(Transform root, bool vertical, int gridX, int gridZ, int length, int[] gaps, WallKind kind)
     {
+        int segmentStartX = 0;
+        int segmentStartZ = 0;
+        int segmentEndX = 0;
+        int segmentEndZ = 0;
+        bool hasActiveSegment = false;
+
         for (int i = 0; i < length; i++)
         {
-            if (HasGap(gaps, i))
-            {
-                continue;
-            }
-
             int x = vertical ? gridX : gridX + i;
             int z = vertical ? gridZ + i : gridZ;
 
-            if (!IsInsideBuildArea(x, z))
+            if (HasGap(gaps, i) || !IsInsideBuildArea(x, z))
             {
+                CapWallSegment(root, vertical, hasActiveSegment, segmentStartX, segmentStartZ, segmentEndX, segmentEndZ);
+                hasActiveSegment = false;
                 continue;
             }
+
+            if (!hasActiveSegment)
+            {
+                segmentStartX = x;
+                segmentStartZ = z;
+                hasActiveSegment = true;
+            }
+
+            segmentEndX = x;
+            segmentEndZ = z;
 
             WallKind resolvedKind = kind;
             if (kind == WallKind.Standard && ((x * 7) + (z * 3)) % 17 == 0)
@@ -306,6 +342,8 @@ public class BackroomsMazeGenerator : MonoBehaviour
 
             CreateWall(root, vertical, x, z, resolvedKind);
         }
+
+        CapWallSegment(root, vertical, hasActiveSegment, segmentStartX, segmentStartZ, segmentEndX, segmentEndZ);
     }
 
     private void AddDoorWall(Transform root, bool vertical, int gridX, int gridZ)
@@ -313,6 +351,26 @@ public class BackroomsMazeGenerator : MonoBehaviour
         if (IsInsideBuildArea(gridX, gridZ))
         {
             CreateWall(root, vertical, gridX, gridZ, WallKind.Door);
+            CapWallSegment(root, vertical, true, gridX, gridZ, gridX, gridZ);
+        }
+    }
+
+    private void CapWallSegment(Transform root, bool vertical, bool hasSegment, int startX, int startZ, int endX, int endZ)
+    {
+        if (!capWallEndsWithPillars || !hasSegment)
+        {
+            return;
+        }
+
+        if (vertical)
+        {
+            CreatePillar(root, startX, startZ);
+            CreatePillar(root, endX, endZ + 1);
+        }
+        else
+        {
+            CreatePillar(root, startX, startZ);
+            CreatePillar(root, endX + 1, endZ);
         }
     }
 
@@ -330,20 +388,6 @@ public class BackroomsMazeGenerator : MonoBehaviour
             : new Vector3(CellCenter(gridX), 0f, GridLine(gridZ));
         float rotation = vertical ? 90f : 0f;
         CreatePiece(root, prefab, "Wall_" + key, position, rotation);
-
-        if (capWallEndsWithPillars)
-        {
-            if (vertical)
-            {
-                CreatePillar(root, gridX, gridZ);
-                CreatePillar(root, gridX, gridZ + 1);
-            }
-            else
-            {
-                CreatePillar(root, gridX, gridZ);
-                CreatePillar(root, gridX + 1, gridZ);
-            }
-        }
     }
 
     private void CreatePillar(Transform root, int gridX, int gridZ)

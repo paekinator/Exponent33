@@ -68,6 +68,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
         BuildDoorRoomBiome(root, min + 30, min + 27);
         BuildBrokenWallBiome(root, min + 8, min + 39);
         BuildSparseTransitionPieces(root, min, max);
+        BuildStandalonePillarBiomes(root, min, max);
     }
 
     private void BuildWestMazeBiome(Transform root, int startX, int startZ)
@@ -200,6 +201,56 @@ public class BackroomsMazeGenerator : MonoBehaviour
         CreatePillar(root, min + 38, min + 22);
         CreatePillar(root, max - 8, max - 9);
         CreatePillar(root, min + 8, max - 5);
+    }
+
+    private void BuildStandalonePillarBiomes(Transform root, int min, int max)
+    {
+        BuildPillarGrid(root, min + 5, min + 22, 7, 9, 2);
+        BuildPillarGrid(root, min + 34, min + 18, 9, 7, 2);
+        BuildPillarGrid(root, min + 21, min + 6, 5, 13, 2);
+
+        BuildStaggeredPillarField(root, min + 4, min + 34, 16, 9);
+        BuildStaggeredPillarField(root, min + 28, min + 39, 12, 6);
+
+        BuildPillarIsland(root, min + 12, min + 27);
+        BuildPillarIsland(root, min + 41, min + 13);
+        BuildPillarIsland(root, max - 11, max - 7);
+    }
+
+    private void BuildPillarGrid(Transform root, int startX, int startZ, int width, int height, int spacing)
+    {
+        for (int x = startX; x <= startX + width; x += spacing)
+        {
+            for (int z = startZ; z <= startZ + height; z += spacing)
+            {
+                CreatePillar(root, x, z);
+            }
+        }
+    }
+
+    private void BuildStaggeredPillarField(Transform root, int startX, int startZ, int width, int height)
+    {
+        for (int x = startX; x <= startX + width; x += 2)
+        {
+            int offset = ((x - startX) / 2) % 2;
+            for (int z = startZ + offset; z <= startZ + height; z += 3)
+            {
+                CreatePillar(root, x, z);
+            }
+        }
+    }
+
+    private void BuildPillarIsland(Transform root, int centerX, int centerZ)
+    {
+        CreatePillar(root, centerX, centerZ);
+        CreatePillar(root, centerX - 1, centerZ);
+        CreatePillar(root, centerX + 1, centerZ);
+        CreatePillar(root, centerX, centerZ - 1);
+        CreatePillar(root, centerX, centerZ + 1);
+        CreatePillar(root, centerX - 2, centerZ - 2);
+        CreatePillar(root, centerX + 2, centerZ - 2);
+        CreatePillar(root, centerX - 2, centerZ + 2);
+        CreatePillar(root, centerX + 2, centerZ + 2);
     }
 
     private void AddRoomBox(Transform root, int startX, int startZ, int width, int height, int doorwaySide)

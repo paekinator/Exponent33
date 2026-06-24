@@ -14,11 +14,11 @@ public class BackroomsLightGrid : MonoBehaviour
     public Vector2 panelSize = new Vector2(5f, 1.8f);
     public float ceilingTileHeight = 4f;
     public float gridLineWidth = 0.15f;
-    public float intensity = 3.5f;
+    public float intensity = 1.8f;
     public float range = 13f;
     public float spotAngle = 110f;
     public Vector2 intensityVariation = new Vector2(1f, 1f);
-    public Color lightColor = new Color(1f, 0.92f, 0.78f, 1f);
+    public Color lightColor = new Color(0.82f, 0.88f, 0.62f, 1f); // dim yellow-green fluorescent
     public GameObject ceilingReferencePrefab;
     public bool autoPlaceAtCeiling = true;
     public float ceilingDrop = 0.08f;
@@ -42,6 +42,12 @@ public class BackroomsLightGrid : MonoBehaviour
     public Material lightPanelMaterial;
     public bool rebuildOnEnable = false;
 
+    // MAP LOCKED: the ceiling-light grid is frozen as currently authored in the
+    // scene. While true, no automatic or manual light rebuild runs, so existing
+    // lights are never cleared or regenerated. Set to false ONLY if you
+    // deliberately want to regenerate the light grid again.
+    private const bool MapLocked = true;
+
     private const string LightNamePrefix = "Generated_Ceiling_Light_";
     private const string LightFixtureNamePrefix = "Generated_Ceiling_LightFixture_";
     private const string OldOmniFillLightNamePrefix = "Generated_Omni_Fill_Light_";
@@ -51,7 +57,12 @@ public class BackroomsLightGrid : MonoBehaviour
 
     void OnEnable()
     {
-        if (rebuildOnEnable || Application.isPlaying)
+        if (MapLocked)
+        {
+            return;
+        }
+
+        if (rebuildOnEnable)
         {
             RebuildLights();
         }
@@ -60,6 +71,12 @@ public class BackroomsLightGrid : MonoBehaviour
     [ContextMenu("Rebuild Lights")]
     public void RebuildLights()
     {
+        if (MapLocked)
+        {
+            Debug.LogWarning("BackroomsLightGrid: rebuild is disabled (MapLocked = true). The lighting is frozen. Set MapLocked = false in BackroomsLightGrid.cs to regenerate.", this);
+            return;
+        }
+
         if (spacing <= 0f)
         {
             return;

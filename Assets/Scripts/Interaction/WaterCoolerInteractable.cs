@@ -1,23 +1,22 @@
 using UnityEngine;
 
-public class WaterCoolerInteractable : MonoBehaviour, IInteractable
+/// <summary>
+/// Water dispenser. HOLD E while looking at it to refill the player's water at
+/// PlayerStats.refillPerSecond (10%/s by default).
+/// </summary>
+public class WaterCoolerInteractable : MonoBehaviour, IInteractable, IHoldInteractable
 {
-    public float waterGain = 10f;
-
     public string GetPrompt()
     {
-        return "E: Drink water";
+        return "Hold E: Drink water";
     }
 
-    public void Interact(PlayerInteractor interactor)
+    // Single tap does nothing special — refilling happens on HOLD.
+    public void Interact(PlayerInteractor interactor) { }
+
+    public void HoldTick(PlayerInteractor interactor, float deltaTime)
     {
         PlayerStats stats = interactor.GetComponent<PlayerStats>();
-
-        if (stats != null)
-        {
-            stats.AddWater(waterGain);
-        }
-
-        Debug.Log("Player drank water.");
+        if (stats != null) stats.AddWater(stats.refillPerSecond * deltaTime);
     }
 }

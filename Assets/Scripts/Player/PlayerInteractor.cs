@@ -46,6 +46,12 @@ public class PlayerInteractor : MonoBehaviour
         {
             currentInteractable.Interact(this);
         }
+
+        // Hold-to-use objects (water dispenser, phone charger): tick while E held.
+        if (currentInteractable is IHoldInteractable holdable && Input.GetKey(KeyCode.E))
+        {
+            holdable.HoldTick(this, Time.deltaTime);
+        }
     }
 
     void CheckForInteractable()
@@ -77,7 +83,49 @@ public class PlayerInteractor : MonoBehaviour
                 {
                     promptText.text = interactable.GetPrompt();
                 }
+
+                return;
             }
         }
+
+        IInteractable nearby = FindNearbyInteractable();
+        if (nearby != null)
+        {
+            currentInteractable = nearby;
+            if (promptText != null)
+            {
+                promptText.text = nearby.GetPrompt();
+            }
+        }
+    }
+
+    IInteractable FindNearbyInteractable()
+    {
+        Collider[] hits = Physics.OverlapSphere(transform.position, interactDistance);
+        IInteractable closest = null;
+        float closestDistance = float.MaxValue;
+
+        foreach (Collider hit in hits)
+        {
+            if (hit.transform.IsChildOf(transform))
+            {
+                continue;
+            }
+
+            IInteractable interactable = hit.GetComponentInParent<IInteractable>();
+            if (interactable == null)
+            {
+                continue;
+            }
+
+            float distance = Vector3.SqrMagnitude(hit.transform.position - transform.position);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closest = interactable;
+            }
+        }
+
+        return closest;
     }
 }

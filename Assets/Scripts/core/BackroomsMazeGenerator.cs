@@ -22,6 +22,12 @@ public class BackroomsMazeGenerator : MonoBehaviour
     public bool rebuildOnEnable = false;
     public bool capWallEndsWithPillars = true;
 
+    // MAP LOCKED: the level is frozen as currently authored in the scene.
+    // While true, no automatic or manual rebuild runs, so existing geometry
+    // is never cleared or regenerated. Set to false ONLY if you deliberately
+    // want to regenerate the maze again.
+    private const bool MapLocked = true;
+
     private const string GeneratedRootName = "Generated_Backrooms_Maze";
     private const string GeneratedPieceName = "Generated_Backrooms_MazePiece";
 
@@ -36,6 +42,11 @@ public class BackroomsMazeGenerator : MonoBehaviour
 
     private void OnEnable()
     {
+        if (MapLocked)
+        {
+            return;
+        }
+
         if (rebuildOnEnable && !Application.isPlaying)
         {
             RebuildMaze();
@@ -45,6 +56,12 @@ public class BackroomsMazeGenerator : MonoBehaviour
     [ContextMenu("Rebuild Fixed Level")]
     public void RebuildMaze()
     {
+        if (MapLocked)
+        {
+            Debug.LogWarning("BackroomsMazeGenerator: rebuild is disabled (MapLocked = true). The level is frozen. Set MapLocked = false in BackroomsMazeGenerator.cs to regenerate.", this);
+            return;
+        }
+
         if (wallPrefab == null || mapSize <= 0f || tileSize <= 0f)
         {
             return;
@@ -92,6 +109,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
         AddPortalOpening(root, false, columns[3] + 7, rows[1], true);
 
         BuildLiminalWallClusters(root, min, max);
+        BuildChaoticMazePass(root, min, max);
     }
 
     private void BuildLongHallTheme(Transform root, int minX, int minZ, int maxX, int maxZ)
@@ -196,6 +214,44 @@ public class BackroomsMazeGenerator : MonoBehaviour
         AddWallRun(root, false, startX, startZ + 4, 6, new[] { 2 }, WallKind.Standard);
         AddWallRun(root, true, startX + 6, startZ + 1, 6, new[] { 3 }, WallKind.Standard);
         AddWallRun(root, false, startX + 2, startZ + 8, 7, new[] { 4 }, WallKind.Standard);
+    }
+
+    private void BuildChaoticMazePass(Transform root, int min, int max)
+    {
+        BuildPerpendicularMazePatch(root, min + 3, min + 4, 11, 17, false);
+        BuildPerpendicularMazePatch(root, min + 27, min + 5, 12, 18, true);
+        BuildPerpendicularMazePatch(root, min + 4, min + 28, 14, 18, true);
+        BuildPerpendicularMazePatch(root, min + 29, min + 29, 17, 17, false);
+
+        BuildDoglegRun(root, min + 18, min + 11, false);
+        BuildDoglegRun(root, min + 39, min + 15, true);
+        BuildDoglegRun(root, min + 18, min + 39, true);
+        BuildDoglegRun(root, min + 43, min + 42, false);
+    }
+
+    private void BuildPerpendicularMazePatch(Transform root, int startX, int startZ, int width, int height, bool mirrored)
+    {
+        int direction = mirrored ? -1 : 1;
+        int anchorX = mirrored ? startX + width : startX;
+
+        AddWallRun(root, false, startX, startZ + 2, width, new[] { 2, 7 }, WallKind.Standard);
+        AddWallRun(root, false, startX + 1, startZ + 8, width - 2, new[] { 4, 9 }, WallKind.Standard);
+        AddWallRun(root, false, startX, startZ + 14, width, new[] { 3, 10 }, WallKind.Standard);
+
+        AddWallRun(root, true, anchorX + direction * 3, startZ, height, BuildRegularGaps(height, 5, 2), WallKind.Standard);
+        AddWallRun(root, true, anchorX + direction * 7, startZ + 3, height - 4, BuildRegularGaps(height - 4, 4, 1), WallKind.Standard);
+
+        AddPortalOpening(root, false, startX + Mathf.Max(2, width / 2), startZ + 8, false);
+        AddPortalOpening(root, true, anchorX + direction * 7, startZ + Mathf.Max(3, height / 2), false);
+    }
+
+    private void BuildDoglegRun(Transform root, int startX, int startZ, bool mirrored)
+    {
+        int direction = mirrored ? -1 : 1;
+        AddWallRun(root, false, startX, startZ, 8, new[] { 3 }, WallKind.Standard);
+        AddWallRun(root, true, startX + direction * 7, startZ, 7, new[] { 2, 5 }, WallKind.Standard);
+        AddWallRun(root, false, startX + direction * 2, startZ + 6, 9, new[] { 4 }, WallKind.Standard);
+        AddWallRun(root, true, startX + direction * 11, startZ + 3, 5, new[] { 1 }, WallKind.Standard);
     }
 
     private void BuildBrokenMazeTheme(Transform root, int minX, int minZ, int maxX, int maxZ)

@@ -120,6 +120,11 @@ public class FirstPersonController : MonoBehaviour
     #endregion
     #endregion
 
+    // ── Public read-only movement state (added for PlayerStats / PlayerNoise) ──
+    public bool IsWalking   => isWalking;
+    public bool IsSprinting => isSprinting;
+    public bool IsCrouched  => isCrouched;
+
     #region Head Bob
 
     public bool enableHeadBob = true;

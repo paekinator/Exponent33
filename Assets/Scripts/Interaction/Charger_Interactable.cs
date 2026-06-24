@@ -1,25 +1,22 @@
 using UnityEngine;
 
-public class ChargerInteractable : MonoBehaviour, IInteractable
+/// <summary>
+/// Phone charger. HOLD E while looking at it to recharge the player's phone at
+/// PlayerStats.refillPerSecond (10%/s by default).
+/// </summary>
+public class ChargerInteractable : MonoBehaviour, IInteractable, IHoldInteractable
 {
-    public float batteryGain = 25f;
-    public float coverageGain = 10f;
-
     public string GetPrompt()
     {
-        return "E: Charge phone";
+        return "Hold E: Charge phone";
     }
 
-    public void Interact(PlayerInteractor interactor)
+    // Single tap does nothing special — charging happens on HOLD.
+    public void Interact(PlayerInteractor interactor) { }
+
+    public void HoldTick(PlayerInteractor interactor, float deltaTime)
     {
         PlayerStats stats = interactor.GetComponent<PlayerStats>();
-
-        if (stats != null)
-        {
-            stats.AddBattery(batteryGain);
-            stats.AddCoverage(coverageGain);
-        }
-
-        Debug.Log("Phone charged. Company coverage ping increased.");
+        if (stats != null) stats.AddPhone(stats.refillPerSecond * deltaTime);
     }
 }

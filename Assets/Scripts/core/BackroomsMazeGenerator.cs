@@ -90,6 +90,8 @@ public class BackroomsMazeGenerator : MonoBehaviour
         AddPortalOpening(root, false, columns[1] + 6, rows[1], true);
         AddPortalOpening(root, false, columns[2] + 6, rows[1], false);
         AddPortalOpening(root, false, columns[3] + 7, rows[1], true);
+
+        BuildLiminalWallClusters(root, min, max);
     }
 
     private void BuildLongHallTheme(Transform root, int minX, int minZ, int maxX, int maxZ)
@@ -108,8 +110,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
 
     private void BuildOpenFloorTheme(Transform root, int minX, int minZ, int maxX, int maxZ)
     {
-        AddWallRun(root, false, minX + 2, minZ + 5, maxX - minX - 4, BuildRegularGaps(maxX - minX - 4, 4, 2), WallKind.Standard);
-        AddWallRun(root, true, minX + 6, minZ + 4, maxZ - minZ - 6, BuildRegularGaps(maxZ - minZ - 6, 5, 2), WallKind.Standard);
+        AddWallRun(root, false, minX + 2, minZ + 5, maxX - minX - 6, BuildRegularGaps(maxX - minX - 6, 4, 2), WallKind.Standard);
 
         for (int x = minX + 3; x <= maxX - 3; x += 5)
         {
@@ -149,15 +150,52 @@ public class BackroomsMazeGenerator : MonoBehaviour
 
     private void BuildSparseWallTheme(Transform root, int minX, int minZ, int maxX, int maxZ)
     {
-        for (int x = minX + 3; x <= maxX - 3; x += 7)
+        for (int x = minX + 3; x <= maxX - 3; x += 9)
         {
-            AddWallRun(root, true, x, minZ + 2, maxZ - minZ - 3, BuildRegularGaps(maxZ - minZ - 3, 4, 2), WallKind.Standard);
+            AddWallRun(root, true, x, minZ + 2, maxZ - minZ - 6, BuildRegularGaps(maxZ - minZ - 6, 4, 2), WallKind.Standard);
         }
 
-        for (int z = minZ + 5; z <= maxZ - 5; z += 9)
+        for (int z = minZ + 5; z <= maxZ - 5; z += 11)
         {
-            AddWallRun(root, false, minX + 2, z, maxX - minX - 3, BuildRegularGaps(maxX - minX - 3, 4, 2), WallKind.Standard);
+            AddWallRun(root, false, minX + 2, z, maxX - minX - 5, BuildRegularGaps(maxX - minX - 5, 4, 2), WallKind.Standard);
         }
+    }
+
+    private void BuildLiminalWallClusters(Transform root, int min, int max)
+    {
+        BuildBentWallCluster(root, min + 5, min + 11, false);
+        BuildBentWallCluster(root, min + 31, min + 9, true);
+        BuildBentWallCluster(root, min + 6, min + 35, true);
+        BuildOffsetRoomFragments(root, min + 27, min + 32);
+        BuildOffsetRoomFragments(root, min + 40, min + 35);
+        BuildBrokenPocket(root, min + 16, min + 26);
+        BuildBrokenPocket(root, min + 34, min + 18);
+    }
+
+    private void BuildBentWallCluster(Transform root, int startX, int startZ, bool mirrored)
+    {
+        int direction = mirrored ? -1 : 1;
+        AddWallRun(root, false, startX, startZ, 7, new[] { 3 }, WallKind.Standard);
+        AddWallRun(root, true, startX + (direction > 0 ? 6 : 0), startZ, 6, new[] { 2 }, WallKind.Standard);
+        AddWallRun(root, false, startX + (direction > 0 ? 2 : -4), startZ + 5, 8, new[] { 1, 6 }, WallKind.Standard);
+        AddWallRun(root, true, startX + (direction > 0 ? 10 : -3), startZ + 2, 5, new[] { 3 }, WallKind.Standard);
+    }
+
+    private void BuildOffsetRoomFragments(Transform root, int startX, int startZ)
+    {
+        AddWallRun(root, false, startX, startZ, 9, new[] { 2, 7 }, WallKind.Standard);
+        AddWallRun(root, true, startX, startZ, 7, new[] { 4 }, WallKind.Standard);
+        AddWallRun(root, false, startX + 2, startZ + 6, 8, new[] { 3 }, WallKind.Standard);
+        AddWallRun(root, true, startX + 8, startZ + 1, 5, new[] { 2 }, WallKind.Standard);
+        AddPortalOpening(root, false, startX + 4, startZ, false);
+    }
+
+    private void BuildBrokenPocket(Transform root, int startX, int startZ)
+    {
+        AddWallRun(root, true, startX, startZ, 4, new[] { 1 }, WallKind.Standard);
+        AddWallRun(root, false, startX, startZ + 4, 6, new[] { 2 }, WallKind.Standard);
+        AddWallRun(root, true, startX + 6, startZ + 1, 6, new[] { 3 }, WallKind.Standard);
+        AddWallRun(root, false, startX + 2, startZ + 8, 7, new[] { 4 }, WallKind.Standard);
     }
 
     private void BuildBrokenMazeTheme(Transform root, int minX, int minZ, int maxX, int maxZ)

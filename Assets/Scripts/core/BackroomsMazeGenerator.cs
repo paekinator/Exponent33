@@ -56,8 +56,8 @@ public class BackroomsMazeGenerator : MonoBehaviour
 
         Transform root = CreateGeneratedRoot();
         int cellCount = Mathf.RoundToInt(mapSize / tileSize);
-        int min = borderTilePadding;
-        int max = cellCount - borderTilePadding;
+        int min = -2;
+        int max = cellCount + 2;
 
         BuildWestMazeBiome(root, min + 2, min + 2);
         BuildSouthPillarBiome(root, min + 28, min + 4);
@@ -86,8 +86,6 @@ public class BackroomsMazeGenerator : MonoBehaviour
         AddWallRun(root, false, startX, startZ + 17, 20, new[] { 3, 16 }, WallKind.Standard);
 
         AddDoorWall(root, false, startX + 8, startZ + 7);
-        AddDoorWall(root, true, startX + 11, startZ + 12);
-        AddDoorWall(root, false, startX + 14, startZ + 9);
     }
 
     private void BuildSouthPillarBiome(Transform root, int startX, int startZ)
@@ -143,12 +141,9 @@ public class BackroomsMazeGenerator : MonoBehaviour
         for (int x = startX + 4; x <= startX + 34; x += 6)
         {
             AddWallRun(root, true, x, startZ + 1, 4, new[] { 2 }, WallKind.Standard);
-            AddDoorWall(root, true, x + 2, startZ + 5);
         }
 
-        AddDoorWall(root, false, startX + 10, startZ);
         AddDoorWall(root, false, startX + 21, startZ + 5);
-        AddDoorWall(root, false, startX + 31, startZ + 10);
     }
 
     private void BuildDoorRoomBiome(Transform root, int startX, int startZ)
@@ -166,10 +161,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
         AddWallRun(root, false, startX, startZ + 4, 16, new[] { 3, 9, 14 }, WallKind.Standard);
         AddWallRun(root, false, startX, startZ + 8, 16, new[] { 6, 12 }, WallKind.Standard);
 
-        AddDoorWall(root, false, startX + 2, startZ + 4);
         AddDoorWall(root, true, startX + 4, startZ + 6);
-        AddDoorWall(root, false, startX + 10, startZ + 8);
-        AddDoorWall(root, true, startX + 12, startZ + 10);
     }
 
     private void BuildBrokenWallBiome(Transform root, int startX, int startZ)
@@ -241,18 +233,18 @@ public class BackroomsMazeGenerator : MonoBehaviour
 
     private void BuildEdgeToEdgeHallwayFill(Transform root, int min, int max)
     {
-        int length = max - min - 1;
+        int length = max - min + 1;
 
-        for (int z = min + 4; z <= max - 4; z += 5)
+        for (int z = min; z <= max; z += 4)
         {
             int[] gaps = z % 10 == 0 ? new[] { 9, 21, 34 } : new[] { 14, 28 };
-            AddWallRun(root, false, min + 1, z, length, gaps, WallKind.Standard);
+            AddWallRun(root, false, min, z, length, gaps, WallKind.Standard);
         }
 
-        for (int x = min + 6; x <= max - 6; x += 7)
+        for (int x = min + 3; x <= max; x += 6)
         {
             int[] gaps = x % 14 == 0 ? new[] { 8, 19, 31 } : new[] { 12, 25 };
-            AddWallRun(root, true, x, min + 1, length, gaps, WallKind.Standard);
+            AddWallRun(root, true, x, min, length, gaps, WallKind.Standard);
         }
     }
 
@@ -302,22 +294,7 @@ public class BackroomsMazeGenerator : MonoBehaviour
         AddWallRun(root, false, startX, startZ + height, width, doorwaySide == 2 ? new[] { doorX } : null, WallKind.Standard);
         AddWallRun(root, true, startX, startZ, height, doorwaySide == 3 ? new[] { doorZ } : null, WallKind.Standard);
 
-        if (doorwaySide == 0)
-        {
-            AddDoorWall(root, false, startX + doorX, startZ);
-        }
-        else if (doorwaySide == 1)
-        {
-            AddDoorWall(root, true, startX + width, startZ + doorZ);
-        }
-        else if (doorwaySide == 2)
-        {
-            AddDoorWall(root, false, startX + doorX, startZ + height);
-        }
-        else if (doorwaySide == 3)
-        {
-            AddDoorWall(root, true, startX, startZ + doorZ);
-        }
+        // Room boxes use open gaps. Actual door prefabs are placed sparingly by the biome methods.
     }
 
     private void AddWallRun(Transform root, bool vertical, int gridX, int gridZ, int length, int[] gaps, WallKind kind)
@@ -445,8 +422,8 @@ public class BackroomsMazeGenerator : MonoBehaviour
 
     private bool IsInsideBuildArea(int gridX, int gridZ)
     {
-        int edge = Mathf.RoundToInt(mapSize / tileSize) - borderTilePadding;
-        return gridX > borderTilePadding && gridZ > borderTilePadding && gridX < edge && gridZ < edge;
+        int edge = Mathf.RoundToInt(mapSize / tileSize) + 2;
+        return gridX >= -2 && gridZ >= -2 && gridX <= edge && gridZ <= edge;
     }
 
     private static bool HasGap(int[] gaps, int index)

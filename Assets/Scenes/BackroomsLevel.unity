@@ -1653,8 +1653,6 @@ MonoBehaviour:
   doorWallPrefabs:
   - {fileID: 6104654271027237870, guid: 61d75f8b26f9485459f5a25bdfd62e8c, type: 3}
   - {fileID: 2213082196249107394, guid: 2945ee05d21776c4ea20337d39044807, type: 3}
-  - {fileID: 5991211558091309780, guid: 872e675da07ca6d4c9a552e9dc531f82, type: 3}
-  - {fileID: 7938413824144776762, guid: ca5df1f94b0ea9c4f9e2f72ddfcf6473, type: 3}
   pillarPrefabs:
   - {fileID: 3519111060552662047, guid: 29b641f3274cf4748a665a543dc07dfc, type: 3}
   mapSize: 200

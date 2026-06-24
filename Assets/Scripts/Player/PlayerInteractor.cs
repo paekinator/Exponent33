@@ -16,6 +16,11 @@ public class PlayerInteractor : MonoBehaviour
     void Awake()
     {
         playerHiding = GetComponent<PlayerHiding>();
+
+        if (playerCamera == null)
+        {
+            playerCamera = GetComponentInChildren<Camera>();
+        }
     }
 
     void Update()

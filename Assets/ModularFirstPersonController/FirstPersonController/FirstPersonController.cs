@@ -64,7 +64,7 @@ public class FirstPersonController : MonoBehaviour
 
     #region Sprint
 
-    public bool enableSprint = true;
+    public bool enableSprint = false;
     public bool unlimitedSprint = false;
     public KeyCode sprintKey = KeyCode.LeftShift;
     public float sprintSpeed = 7f;
@@ -97,6 +97,8 @@ public class FirstPersonController : MonoBehaviour
     public bool enableJump = true;
     public KeyCode jumpKey = KeyCode.Space;
     public float jumpPower = 5f;
+    public float groundCheckDistance = .75f;
+    public LayerMask groundCheckLayers = ~0;
 
     // Internal Variables
     private bool isGrounded = false;
@@ -107,7 +109,7 @@ public class FirstPersonController : MonoBehaviour
 
     public bool enableCrouch = true;
     public bool holdToCrouch = true;
-    public KeyCode crouchKey = KeyCode.LeftControl;
+    public KeyCode crouchKey = KeyCode.C;
     public float crouchHeight = .75f;
     public float speedReduction = .5f;
 
@@ -135,12 +137,40 @@ public class FirstPersonController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
 
+        if (playerCamera == null)
+        {
+            playerCamera = GetComponentInChildren<Camera>();
+        }
+
+        if (joint == null && playerCamera != null)
+        {
+            joint = playerCamera.transform;
+        }
+
+        if (groundCheckDistance <= 0f)
+        {
+            groundCheckDistance = .75f;
+        }
+
+        if (groundCheckLayers.value == 0)
+        {
+            groundCheckLayers = ~0;
+        }
+
         crosshairObject = GetComponentInChildren<Image>();
 
         // Set internal variables
-        playerCamera.fieldOfView = fov;
+        if (playerCamera != null)
+        {
+            playerCamera.fieldOfView = fov;
+        }
+
         originalScale = transform.localScale;
-        jointOriginalPos = joint.localPosition;
+
+        if (joint != null)
+        {
+            jointOriginalPos = joint.localPosition;
+        }
 
         if (!unlimitedSprint)
         {
@@ -158,12 +188,18 @@ public class FirstPersonController : MonoBehaviour
 
         if(crosshair)
         {
-            crosshairObject.sprite = crosshairImage;
-            crosshairObject.color = crosshairColor;
+            if (crosshairObject != null)
+            {
+                crosshairObject.sprite = crosshairImage;
+                crosshairObject.color = crosshairColor;
+            }
         }
         else
         {
-            crosshairObject.gameObject.SetActive(false);
+            if (crosshairObject != null)
+            {
+                crosshairObject.gameObject.SetActive(false);
+            }
         }
 
         #region Sprint Bar
@@ -172,8 +208,15 @@ public class FirstPersonController : MonoBehaviour
 
         if(useSprintBar)
         {
-            sprintBarBG.gameObject.SetActive(true);
-            sprintBar.gameObject.SetActive(true);
+            if (sprintBarBG != null)
+            {
+                sprintBarBG.gameObject.SetActive(true);
+            }
+
+            if (sprintBar != null)
+            {
+                sprintBar.gameObject.SetActive(true);
+            }
 
             float screenWidth = Screen.width;
             float screenHeight = Screen.height;
@@ -181,8 +224,15 @@ public class FirstPersonController : MonoBehaviour
             sprintBarWidth = screenWidth * sprintBarWidthPercent;
             sprintBarHeight = screenHeight * sprintBarHeightPercent;
 
-            sprintBarBG.rectTransform.sizeDelta = new Vector3(sprintBarWidth, sprintBarHeight, 0f);
-            sprintBar.rectTransform.sizeDelta = new Vector3(sprintBarWidth - 2, sprintBarHeight - 2, 0f);
+            if (sprintBarBG != null)
+            {
+                sprintBarBG.rectTransform.sizeDelta = new Vector3(sprintBarWidth, sprintBarHeight, 0f);
+            }
+
+            if (sprintBar != null)
+            {
+                sprintBar.rectTransform.sizeDelta = new Vector3(sprintBarWidth - 2, sprintBarHeight - 2, 0f);
+            }
 
             if(hideBarWhenFull)
             {
@@ -191,8 +241,15 @@ public class FirstPersonController : MonoBehaviour
         }
         else
         {
-            sprintBarBG.gameObject.SetActive(false);
-            sprintBar.gameObject.SetActive(false);
+            if (sprintBarBG != null)
+            {
+                sprintBarBG.gameObject.SetActive(false);
+            }
+
+            if (sprintBar != null)
+            {
+                sprintBar.gameObject.SetActive(false);
+            }
         }
 
         #endregion
@@ -205,7 +262,7 @@ public class FirstPersonController : MonoBehaviour
         #region Camera
 
         // Control camera movement
-        if(cameraCanMove)
+        if(cameraCanMove && playerCamera != null)
         {
             yaw = transform.localEulerAngles.y + Input.GetAxis("Mouse X") * mouseSensitivity;
 
@@ -228,7 +285,7 @@ public class FirstPersonController : MonoBehaviour
 
         #region Camera Zoom
 
-        if (enableZoom)
+        if (enableZoom && playerCamera != null)
         {
             // Changes isZoomed when key is pressed
             // Behavior for toogle zoom
@@ -279,7 +336,11 @@ public class FirstPersonController : MonoBehaviour
             if(isSprinting)
             {
                 isZoomed = false;
-                playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, sprintFOV, sprintFOVStepTime * Time.deltaTime);
+
+                if (playerCamera != null)
+                {
+                    playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, sprintFOV, sprintFOVStepTime * Time.deltaTime);
+                }
 
                 // Drain sprint remaining while sprinting
                 if(!unlimitedSprint)
@@ -316,8 +377,11 @@ public class FirstPersonController : MonoBehaviour
             // Handles sprintBar 
             if(useSprintBar && !unlimitedSprint)
             {
-                float sprintRemainingPercent = sprintRemaining / sprintDuration;
-                sprintBar.transform.localScale = new Vector3(sprintRemainingPercent, 1f, 1f);
+                if (sprintBar != null)
+                {
+                    float sprintRemainingPercent = sprintRemaining / sprintDuration;
+                    sprintBar.transform.localScale = new Vector3(sprintRemainingPercent, 1f, 1f);
+                }
             }
         }
 
@@ -358,7 +422,7 @@ public class FirstPersonController : MonoBehaviour
 
         CheckGround();
 
-        if(enableHeadBob)
+        if(enableHeadBob && joint != null)
         {
             HeadBob();
         }
@@ -384,58 +448,17 @@ public class FirstPersonController : MonoBehaviour
                 isWalking = false;
             }
 
-            // All movement calculations shile sprint is active
-            if (enableSprint && Input.GetKey(sprintKey) && sprintRemaining > 0f && !isSprintCooldown)
-            {
-                targetVelocity = transform.TransformDirection(targetVelocity) * sprintSpeed;
+            isSprinting = false;
+            targetVelocity = transform.TransformDirection(targetVelocity) * walkSpeed;
 
-                // Apply a force that attempts to reach our target velocity
-                Vector3 velocity = rb.linearVelocity;
-                Vector3 velocityChange = (targetVelocity - velocity);
-                velocityChange.x = Mathf.Clamp(velocityChange.x, -maxVelocityChange, maxVelocityChange);
-                velocityChange.z = Mathf.Clamp(velocityChange.z, -maxVelocityChange, maxVelocityChange);
-                velocityChange.y = 0;
+            // Apply a force that attempts to reach our target velocity
+            Vector3 velocity = rb.linearVelocity;
+            Vector3 velocityChange = (targetVelocity - velocity);
+            velocityChange.x = Mathf.Clamp(velocityChange.x, -maxVelocityChange, maxVelocityChange);
+            velocityChange.z = Mathf.Clamp(velocityChange.z, -maxVelocityChange, maxVelocityChange);
+            velocityChange.y = 0;
 
-                // Player is only moving when valocity change != 0
-                // Makes sure fov change only happens during movement
-                if (velocityChange.x != 0 || velocityChange.z != 0)
-                {
-                    isSprinting = true;
-
-                    if (isCrouched)
-                    {
-                        Crouch();
-                    }
-
-                    if (hideBarWhenFull && !unlimitedSprint)
-                    {
-                        sprintBarCG.alpha += 5 * Time.deltaTime;
-                    }
-                }
-
-                rb.AddForce(velocityChange, ForceMode.VelocityChange);
-            }
-            // All movement calculations while walking
-            else
-            {
-                isSprinting = false;
-
-                if (hideBarWhenFull && sprintRemaining == sprintDuration)
-                {
-                    sprintBarCG.alpha -= 3 * Time.deltaTime;
-                }
-
-                targetVelocity = transform.TransformDirection(targetVelocity) * walkSpeed;
-
-                // Apply a force that attempts to reach our target velocity
-                Vector3 velocity = rb.linearVelocity;
-                Vector3 velocityChange = (targetVelocity - velocity);
-                velocityChange.x = Mathf.Clamp(velocityChange.x, -maxVelocityChange, maxVelocityChange);
-                velocityChange.z = Mathf.Clamp(velocityChange.z, -maxVelocityChange, maxVelocityChange);
-                velocityChange.y = 0;
-
-                rb.AddForce(velocityChange, ForceMode.VelocityChange);
-            }
+            rb.AddForce(velocityChange, ForceMode.VelocityChange);
         }
 
         #endregion
@@ -446,9 +469,9 @@ public class FirstPersonController : MonoBehaviour
     {
         Vector3 origin = new Vector3(transform.position.x, transform.position.y - (transform.localScale.y * .5f), transform.position.z);
         Vector3 direction = transform.TransformDirection(Vector3.down);
-        float distance = .75f;
+        float distance = groundCheckDistance;
 
-        if (Physics.Raycast(origin, direction, out RaycastHit hit, distance))
+        if (Physics.Raycast(origin, direction, out RaycastHit hit, distance, groundCheckLayers, QueryTriggerInteraction.Ignore))
         {
             Debug.DrawRay(origin, direction * distance, Color.red);
             isGrounded = true;
@@ -501,13 +524,8 @@ public class FirstPersonController : MonoBehaviour
     {
         if(isWalking)
         {
-            // Calculates HeadBob speed during sprint
-            if(isSprinting)
-            {
-                timer += Time.deltaTime * (bobSpeed + sprintSpeed);
-            }
             // Calculates HeadBob speed during crouched movement
-            else if (isCrouched)
+            if (isCrouched)
             {
                 timer += Time.deltaTime * (bobSpeed * speedReduction);
             }
@@ -687,6 +705,8 @@ public class FirstPersonController : MonoBehaviour
         GUI.enabled = fpc.enableJump;
         fpc.jumpKey = (KeyCode)EditorGUILayout.EnumPopup(new GUIContent("Jump Key", "Determines what key is used to jump."), fpc.jumpKey);
         fpc.jumpPower = EditorGUILayout.Slider(new GUIContent("Jump Power", "Determines how high the player will jump."), fpc.jumpPower, .1f, 20f);
+        fpc.groundCheckDistance = EditorGUILayout.Slider(new GUIContent("Ground Check Distance", "How far below the player to check for the ground."), fpc.groundCheckDistance, .1f, 2f);
+        fpc.groundCheckLayers = EditorGUILayout.MaskField(new GUIContent("Ground Check Layers", "Which layers count as ground for jumping."), fpc.groundCheckLayers, UnityEditorInternal.InternalEditorUtility.layers);
         GUI.enabled = true;
 
         EditorGUILayout.Space();

@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class WaterCoolerInteractable : MonoBehaviour, IInteractable
 {
-    public float conditionGain = 25f;
+    public float waterGain = 10f;
 
     public string GetPrompt()
     {
@@ -15,7 +15,7 @@ public class WaterCoolerInteractable : MonoBehaviour, IInteractable
 
         if (stats != null)
         {
-            stats.AddCondition(conditionGain);
+            stats.AddWater(waterGain);
         }
 
         Debug.Log("Player drank water.");

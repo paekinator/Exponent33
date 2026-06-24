@@ -174,10 +174,10 @@ MonoBehaviour:
   playerCanMove: 1
   walkSpeed: 3
   maxVelocityChange: 10
-  enableSprint: 1
-  unlimitedSprint: 1
-  sprintKey: 304
-  sprintSpeed: 5
+  enableSprint: 0
+  unlimitedSprint: 0
+  sprintKey: 0
+  sprintSpeed: 3
   sprintDuration: 5
   sprintCooldown: 0.5
   sprintFOV: 80
@@ -188,12 +188,16 @@ MonoBehaviour:
   sprintBar: {fileID: 4459864850888339820}
   sprintBarWidthPercent: 0.3
   sprintBarHeightPercent: 0.02
-  enableJump: 0
+  enableJump: 1
   jumpKey: 32
   jumpPower: 5
+  groundCheckDistance: 0.75
+  groundCheckLayers:
+    serializedVersion: 2
+    m_Bits: -1
   enableCrouch: 1
   holdToCrouch: 1
-  crouchKey: 306
+  crouchKey: 99
   crouchHeight: 0.5
   speedReduction: 0.5
   enableHeadBob: 0

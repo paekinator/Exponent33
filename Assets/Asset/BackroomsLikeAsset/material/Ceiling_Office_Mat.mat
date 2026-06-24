@@ -11,8 +11,7 @@ Material:
   m_Shader: {fileID: -6465566751694194690, guid: bbedfa6c7ca379747862390237251092, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords:
-  - _ALPHATEST_ON
+  m_ValidKeywords: []
   m_InvalidKeywords:
   - _EMISSION
   m_LightmapFlags: 3
@@ -20,7 +19,7 @@ Material:
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
   stringTagMap:
-    RenderType: TransparentCutout
+    RenderType: Opaque
   disabledShaderPasses:
   - MOTIONVECTORS
   m_LockedProperties: 
@@ -62,9 +61,9 @@ Material:
     m_Ints: []
     m_Floats:
     - _AO: 0
-    - _AlphaClip: 1
+    - _AlphaClip: 0
     - _AlphaClipping: 0
-    - _AlphaToMask: 1
+    - _AlphaToMask: 0
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
     - _CastShadows: 1
@@ -89,7 +88,7 @@ Material:
     m_Colors:
     - _Blue_Area_Color: {r: 1, g: 1, b: 1, a: 0}
     - _ColorOverlay: {r: 1, g: 1, b: 1, a: 0}
-    - _Emission_Color: {r: 6.0235295, g: 6.0235295, b: 6.0235295, a: 0}
+    - _Emission_Color: {r: 4, g: 3.4, b: 2.1, a: 0}
     - _Green_Area_Color: {r: 1, g: 1, b: 1, a: 0}
     - _Red_Area_Color: {r: 1, g: 1, b: 1, a: 0}
     - _UV_Tiling: {r: 1, g: 1, b: 0, a: 0}

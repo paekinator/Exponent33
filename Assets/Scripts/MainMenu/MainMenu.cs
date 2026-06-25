@@ -22,6 +22,12 @@ public class MainMenu : MonoBehaviour
         MusicManager.Instance.PlayMusic("Game", 0.5f);
     }
 
+    public void ReturnToMenu() {
+        SceneManager.LoadScene("MainMenu");
+        MusicManager.Instance.PlayMusic("MainMenu", 0.5f);
+    }
+
+
     public void Quit() {
         Application.Quit();
     }

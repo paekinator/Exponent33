@@ -64,17 +64,18 @@ public class FirstPersonController : MonoBehaviour
 
     #region Sprint
 
-    public bool enableSprint = false;
-    public bool unlimitedSprint = false;
+    public bool enableSprint = true;
+    public bool unlimitedSprint = true;
     public KeyCode sprintKey = KeyCode.LeftShift;
-    public float sprintSpeed = 7f;
+    public float sprintSpeed = 7.5f;
+    public float sprintSpeedMultiplier = 1.5f;
     public float sprintDuration = 5f;
     public float sprintCooldown = .5f;
-    public float sprintFOV = 80f;
+    public float sprintFOV = 64f;
     public float sprintFOVStepTime = 10f;
 
     // Sprint Bar
-    public bool useSprintBar = true;
+    public bool useSprintBar = false;
     public bool hideBarWhenFull = true;
     public Image sprintBarBG;
     public Image sprintBar;
@@ -120,10 +121,11 @@ public class FirstPersonController : MonoBehaviour
     #endregion
     #endregion
 
-    // ── Public read-only movement state (added for PlayerStats / PlayerNoise) ──
+    // ── Public read-only movement state (added for PlayerStats / PlayerNoiseMeter) ──
     public bool IsWalking   => isWalking;
     public bool IsSprinting => isSprinting;
     public bool IsCrouched  => isCrouched;
+    public bool IsGrounded  => isGrounded;
 
     #region Head Bob
 
@@ -131,6 +133,10 @@ public class FirstPersonController : MonoBehaviour
     public Transform joint;
     public float bobSpeed = 10f;
     public Vector3 bobAmount = new Vector3(.15f, .05f, 0f);
+    [Tooltip("Bob speed is multiplied by this while sprinting, on top of the base bobSpeed.")]
+    public float sprintBobSpeedMultiplier = 1.6f;
+    [Tooltip("Bob amount is multiplied by this while sprinting, on top of the base bobAmount.")]
+    public float sprintBobAmountMultiplier = 1.9f;
 
     // Internal Variables
     private Vector3 jointOriginalPos;
@@ -138,9 +144,31 @@ public class FirstPersonController : MonoBehaviour
 
     #endregion
 
+    private PhysicsMaterial noFrictionMaterial;
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.freezeRotation = true;
+            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+        }
+
+        noFrictionMaterial = new PhysicsMaterial("Player_NoFriction")
+        {
+            dynamicFriction = 0f,
+            staticFriction = 0f,
+            bounciness = 0f,
+            frictionCombine = PhysicsMaterialCombine.Minimum,
+            bounceCombine = PhysicsMaterialCombine.Minimum
+        };
+
+        foreach (Collider playerCollider in GetComponentsInChildren<Collider>())
+        {
+            playerCollider.material = noFrictionMaterial;
+        }
 
         if (playerCamera == null)
         {
@@ -264,6 +292,8 @@ public class FirstPersonController : MonoBehaviour
 
     private void Update()
     {
+        isSprinting = ShouldSprint();
+
         #region Camera
 
         // Control camera movement
@@ -444,7 +474,7 @@ public class FirstPersonController : MonoBehaviour
 
             // Checks if player is walking and isGrounded
             // Will allow head bob
-            if (targetVelocity.x != 0 || targetVelocity.z != 0 && isGrounded)
+            if ((targetVelocity.x != 0 || targetVelocity.z != 0) && isGrounded)
             {
                 isWalking = true;
             }
@@ -453,20 +483,44 @@ public class FirstPersonController : MonoBehaviour
                 isWalking = false;
             }
 
-            isSprinting = false;
-            targetVelocity = transform.TransformDirection(targetVelocity) * walkSpeed;
+            isSprinting = isGrounded && ShouldSprint(targetVelocity.sqrMagnitude > 0.01f);
 
-            // Apply a force that attempts to reach our target velocity
-            Vector3 velocity = rb.linearVelocity;
-            Vector3 velocityChange = (targetVelocity - velocity);
-            velocityChange.x = Mathf.Clamp(velocityChange.x, -maxVelocityChange, maxVelocityChange);
-            velocityChange.z = Mathf.Clamp(velocityChange.z, -maxVelocityChange, maxVelocityChange);
-            velocityChange.y = 0;
+            if (isGrounded)
+            {
+                float currentSpeed = isSprinting ? walkSpeed * sprintSpeedMultiplier : walkSpeed;
+                sprintSpeed = walkSpeed * sprintSpeedMultiplier;
+                targetVelocity = transform.TransformDirection(targetVelocity) * currentSpeed;
 
-            rb.AddForce(velocityChange, ForceMode.VelocityChange);
+                // Apply a force that attempts to reach our target velocity.
+                Vector3 velocity = rb.linearVelocity;
+                Vector3 velocityChange = (targetVelocity - velocity);
+                velocityChange.x = Mathf.Clamp(velocityChange.x, -maxVelocityChange, maxVelocityChange);
+                velocityChange.z = Mathf.Clamp(velocityChange.z, -maxVelocityChange, maxVelocityChange);
+                velocityChange.y = 0;
+
+                rb.AddForce(velocityChange, ForceMode.VelocityChange);
+            }
         }
 
         #endregion
+    }
+
+    private bool ShouldSprint()
+    {
+        bool hasMovementInput = Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0.01f || Mathf.Abs(Input.GetAxisRaw("Vertical")) > 0.01f;
+        return ShouldSprint(hasMovementInput);
+    }
+
+    private bool ShouldSprint(bool hasMovementInput)
+    {
+        bool shiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) || Input.GetKey(sprintKey);
+
+        return enableSprint
+            && shiftHeld
+            && hasMovementInput
+            && !isCrouched
+            && !isSprintCooldown
+            && (unlimitedSprint || sprintRemaining > 0f);
     }
 
     // Sets isGrounded based on a raycast sent straigth down from the player object
@@ -503,6 +557,32 @@ public class FirstPersonController : MonoBehaviour
         }
     }
 
+    private void OnCollisionStay(Collision collision)
+    {
+        if (rb == null || isGrounded)
+        {
+            return;
+        }
+
+        Vector3 velocity = rb.linearVelocity;
+        for (int i = 0; i < collision.contactCount; i++)
+        {
+            Vector3 normal = collision.GetContact(i).normal;
+            if (normal.y > 0.35f)
+            {
+                continue;
+            }
+
+            float intoWall = Vector3.Dot(velocity, normal);
+            if (intoWall < 0f)
+            {
+                velocity -= normal * intoWall;
+            }
+        }
+
+        rb.linearVelocity = velocity;
+    }
+
     private void Crouch()
     {
         // Stands player up to full height
@@ -534,13 +614,22 @@ public class FirstPersonController : MonoBehaviour
             {
                 timer += Time.deltaTime * (bobSpeed * speedReduction);
             }
+            // Calculates HeadBob speed during sprinting - bigger, faster bob
+            else if (isSprinting)
+            {
+                timer += Time.deltaTime * (bobSpeed * sprintBobSpeedMultiplier);
+            }
             // Calculates HeadBob speed during walking
             else
             {
                 timer += Time.deltaTime * bobSpeed;
             }
+
+            // Sprinting bobs further than a normal walk; crouching/walking use the base amount.
+            Vector3 amount = isSprinting ? bobAmount * sprintBobAmountMultiplier : bobAmount;
+
             // Applies HeadBob movement
-            joint.localPosition = new Vector3(jointOriginalPos.x + Mathf.Sin(timer) * bobAmount.x, jointOriginalPos.y + Mathf.Sin(timer) * bobAmount.y, jointOriginalPos.z + Mathf.Sin(timer) * bobAmount.z);
+            joint.localPosition = new Vector3(jointOriginalPos.x + Mathf.Sin(timer) * amount.x, jointOriginalPos.y + Mathf.Sin(timer) * amount.y, jointOriginalPos.z + Mathf.Sin(timer) * amount.z);
         }
         else
         {

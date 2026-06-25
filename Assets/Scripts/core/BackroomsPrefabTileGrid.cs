@@ -16,7 +16,7 @@ public class BackroomsPrefabTileGrid : MonoBehaviour
     // MAP LOCKED: the tile grid is frozen as currently authored in the scene.
     // While true, no automatic or manual rebuild/fill runs. Set to false ONLY
     // if you deliberately want to regenerate tiles again.
-    private const bool MapLocked = true;
+    private static readonly bool MapLocked = true;
 
     private const string GeneratedRootName = "Generated_Backrooms_Tile_Grid";
     private const string GeneratedTileName = "Generated_Backrooms_Fill_Tile";

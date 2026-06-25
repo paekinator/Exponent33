@@ -6,12 +6,17 @@ public class PlayerInteractor : MonoBehaviour
     [Header("Raycast")]
     public Camera playerCamera;
     public float interactDistance = 3f;
+    public float holdInteractDistance = 1.5f;
 
     [Header("UI")]
     public TextMeshProUGUI promptText;
 
     private IInteractable currentInteractable;
     private PlayerHiding playerHiding;
+
+    /// <summary>True while the raycast is over a world interactable, so item-in-hand
+    /// scripts (e.g. drinking held milk on E) can avoid stealing input from it.</summary>
+    public bool HasTarget => currentInteractable != null;
 
     void Awake()
     {
@@ -77,6 +82,11 @@ public class PlayerInteractor : MonoBehaviour
 
             if (interactable != null)
             {
+                if (interactable is IHoldInteractable && hit.distance > holdInteractDistance)
+                {
+                    return;
+                }
+
                 currentInteractable = interactable;
 
                 if (promptText != null)
@@ -87,45 +97,5 @@ public class PlayerInteractor : MonoBehaviour
                 return;
             }
         }
-
-        IInteractable nearby = FindNearbyInteractable();
-        if (nearby != null)
-        {
-            currentInteractable = nearby;
-            if (promptText != null)
-            {
-                promptText.text = nearby.GetPrompt();
-            }
-        }
-    }
-
-    IInteractable FindNearbyInteractable()
-    {
-        Collider[] hits = Physics.OverlapSphere(transform.position, interactDistance);
-        IInteractable closest = null;
-        float closestDistance = float.MaxValue;
-
-        foreach (Collider hit in hits)
-        {
-            if (hit.transform.IsChildOf(transform))
-            {
-                continue;
-            }
-
-            IInteractable interactable = hit.GetComponentInParent<IInteractable>();
-            if (interactable == null)
-            {
-                continue;
-            }
-
-            float distance = Vector3.SqrMagnitude(hit.transform.position - transform.position);
-            if (distance < closestDistance)
-            {
-                closestDistance = distance;
-                closest = interactable;
-            }
-        }
-
-        return closest;
     }
 }

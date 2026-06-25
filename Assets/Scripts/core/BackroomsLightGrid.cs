@@ -46,7 +46,7 @@ public class BackroomsLightGrid : MonoBehaviour
     // scene. While true, no automatic or manual light rebuild runs, so existing
     // lights are never cleared or regenerated. Set to false ONLY if you
     // deliberately want to regenerate the light grid again.
-    private const bool MapLocked = true;
+    private static readonly bool MapLocked = true;
 
     private const string LightNamePrefix = "Generated_Ceiling_Light_";
     private const string LightFixtureNamePrefix = "Generated_Ceiling_LightFixture_";

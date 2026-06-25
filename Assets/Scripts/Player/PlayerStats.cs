@@ -24,11 +24,17 @@ public class PlayerStats : MonoBehaviour
     public float water    = 100f;
     [Tooltip("Water lost per second at a normal pace.")]
     public float waterDrainPerSecond = 1f;
+    [Tooltip("Water drain multiplier while sprinting.")]
+    public float sprintWaterMultiplier = 1.5f;
 
     [Header("Phone Charge")]
     public float maxPhone = 100f;
     public float phone    = 100f;
-    public float phoneDrainPerSecond = 1f;
+    [Tooltip("1% every 1.5 seconds = 1/1.5 per second.")]
+    public float phoneDrainPerSecond = 1f / 1.5f;
+    [Tooltip("Total phone drain multiplier while the phone torch is on.")]
+    public float phoneTorchDrainMultiplier = 1.5f;
+    [HideInInspector] public bool phoneTorchActive;
 
     [Header("Refill")]
     [Tooltip("Units restored per second while holding E at a station (10 = 10%/s at max 100).")]
@@ -57,10 +63,17 @@ public class PlayerStats : MonoBehaviour
     {
         if (_fainted) return;
 
-        water = Mathf.Max(0f, water - waterDrainPerSecond * Time.deltaTime);
+        bool sprinting = controller != null && controller.IsSprinting;
+        float waterRate = waterDrainPerSecond * (sprinting ? sprintWaterMultiplier : 1f);
+        water = Mathf.Max(0f, water - waterRate * Time.deltaTime);
 
         // ── Phone drains ──────────────────────────────────────────────────────
-        phone = Mathf.Max(0f, phone - phoneDrainPerSecond * Time.deltaTime);
+        float phoneRate = phoneDrainPerSecond * (phoneTorchActive ? phoneTorchDrainMultiplier : 1f);
+        phone = Mathf.Max(0f, phone - phoneRate * Time.deltaTime);
+        if (phone <= 0f)
+        {
+            phoneTorchActive = false;
+        }
 
         // ── Out of water -> faint ─────────────────────────────────────────────
         if (water <= 0f) Faint();

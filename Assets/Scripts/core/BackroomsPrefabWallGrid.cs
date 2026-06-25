@@ -19,7 +19,7 @@ public class BackroomsPrefabWallGrid : MonoBehaviour
     // MAP LOCKED: the wall grid is frozen as currently authored in the scene.
     // While true, no automatic or manual rebuild/fill runs. Set to false ONLY
     // if you deliberately want to regenerate the wall ring again.
-    private const bool MapLocked = true;
+    private static readonly bool MapLocked = true;
 
     private const string GeneratedRootName = "Generated_Backrooms_Wall_Grid";
     private const string GeneratedPieceName = "Generated_Backrooms_Edge_Tile";

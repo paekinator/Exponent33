@@ -18,5 +18,8 @@ public class WaterCoolerInteractable : MonoBehaviour, IInteractable, IHoldIntera
     {
         PlayerStats stats = interactor.GetComponent<PlayerStats>();
         if (stats != null) stats.AddWater(stats.refillPerSecond * deltaTime);
+
+        PlayerDrinkAudio drinkAudio = interactor.GetComponent<PlayerDrinkAudio>();
+        if (drinkAudio != null) drinkAudio.HoldDrinkTick();
     }
 }

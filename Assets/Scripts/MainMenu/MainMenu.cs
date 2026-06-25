@@ -27,11 +27,13 @@ public class MainMenu : MonoBehaviour
     }
 
     public void UpdateMusicVolume(float volume) {
-        audioMixer.SetFloat("MusicVolume", volume);
+        float logAdjustedVol = Mathf.Log10(volume) * 20;
+        audioMixer.SetFloat("MusicVolume", logAdjustedVol);
     }
 
     public void UpdateSoundVolume(float volume) {
-        audioMixer.SetFloat("SFXVolume", volume);
+        float logAdjustedVol = Mathf.Log10(volume) * 20;
+        audioMixer.SetFloat("SFXVolume", logAdjustedVol);
     }
 
     public void SaveVolume() {

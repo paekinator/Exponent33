@@ -959,6 +959,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 237843046}
+  - component: {fileID: 237843047}
+  - component: {fileID: 237843048}
+  - component: {fileID: 237843049}
   - component: {fileID: 237843045}
   - component: {fileID: 237843044}
   m_Layer: 0
@@ -982,6 +985,125 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SoundManager
   sfxLibrary: {fileID: 237843045}
   sfx2DSource: {fileID: 1066355817}
+--- !u!114 &237843047
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 237843043}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 343e63147367a4aaa965d9847792b334, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MusicManager
+  musicLibrary: {fileID: 237843048}
+  musicSource: {fileID: 237843049}
+--- !u!114 &237843048
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 237843043}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ac5c88774de24ac0bc0a5460730e5f0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MusicLibrary
+  tracks:
+  - trackName: MainMenu
+    clip: {fileID: 8300000, guid: 174a89a00c1644b7b8e12a73df4ac5a3, type: 3}
+  - trackName: Game
+    clip: {fileID: 8300000, guid: 01983eea20efa4232ab0484ec937817e, type: 3}
+--- !u!82 &237843049
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 237843043}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 0
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 1
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!114 &237843045
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2310,6 +2432,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee6be117fdee4a32aab4f5cd33b65567, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enableCursorParallax: 1
+  horizontalMove: 0.32
+  verticalMove: 0.14
+  yawDegrees: 1.25
+  pitchDegrees: 0.7
+  zoomOutFov: 2.8
+  smoothing: 7
 --- !u!224 &730300204 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 6579102821504748407, guid: d15d5e1f084284f3493794a79135890e, type: 3}
@@ -5247,8 +5376,8 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
-  m_IsKinematic: 0
+  m_UseGravity: 0
+  m_IsKinematic: 1
   m_Interpolate: 1
   m_Constraints: 112
   m_CollisionDetection: 1
@@ -6104,11 +6233,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4a94ab08754945b0ae1308d1402d8b87, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  horizontalOffset: 0.22
-  verticalOffset: 0.09
-  yawDegrees: 0.55
-  pitchDegrees: 0.28
+  horizontalOffset: 0
+  verticalOffset: 0
+  yawDegrees: 0
+  pitchDegrees: 0
   smoothing: 8
+  layerChildrenByDepth: 0
+  childHorizontalOffset: 0
+  childVerticalOffset: 0
+  childDepthScale: 0.035
 --- !u!1001 &880000000000000011
 PrefabInstance:
   m_ObjectHideFlags: 0

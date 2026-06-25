@@ -14,6 +14,13 @@ using UnityEngine.UI;
 /// </summary>
 public class BossEndScreen : MonoBehaviour
 {
+    public enum ResultType
+    {
+        Caught,
+        Dehydrated,
+        Survived
+    }
+
     [Header("UI References (built at runtime if left empty)")]
     public GameObject panel;
     public TextMeshProUGUI catchText;
@@ -28,8 +35,17 @@ public class BossEndScreen : MonoBehaviour
     public bool freezeTimeOnShow = true;
     [Tooltip("Unlock and show the cursor on the end screen.")]
     public bool unlockCursorOnShow = true;
+    [Tooltip("Switch back to menu music when this result screen appears.")]
+    public bool playMenuMusicOnShow = true;
+    [Tooltip("Track name in MusicLibrary used for menu and result-screen music.")]
+    public string menuMusicTrackName = "MainMenu";
     [Tooltip("Scene name to load on restart. Leave empty to reload the current scene.")]
     public string restartSceneName = "";
+
+    GameTimer timer;
+    bool shown;
+
+    public bool IsShown => shown;
 
     void Awake()
     {
@@ -37,6 +53,8 @@ public class BossEndScreen : MonoBehaviour
         {
             BuildRuntimeUi();
         }
+
+        if (timer == null) timer = Object.FindAnyObjectByType<GameTimer>();
     }
 
     void Start()
@@ -55,8 +73,35 @@ public class BossEndScreen : MonoBehaviour
     /// <summary>Wire this to BossAI.onCatchPlayer in the Inspector.</summary>
     public void ShowEndScreen()
     {
-        if (catchText != null) catchText.text = catchMessage;
-        if (subText != null) subText.text = subtitleMessage;
+        ShowResult(ResultType.Caught);
+    }
+
+    public void ShowResult(ResultType resultType)
+    {
+        float survivedSeconds = timer != null ? timer.ElapsedSeconds : 0f;
+        ShowResult(resultType, survivedSeconds);
+    }
+
+    public void ShowResult(ResultType resultType, float survivedSeconds)
+    {
+        if (shown) return;
+        shown = true;
+
+        LastShiftLeaderboardStore.Record(resultType, survivedSeconds);
+
+        if (catchText != null)
+        {
+            catchText.text = GetTitle(resultType);
+            catchText.color = GetTitleColor(resultType);
+        }
+
+        if (subText != null)
+        {
+            subText.text = GetSubtitle(resultType, survivedSeconds);
+        }
+
+        PlayEndScreenMusic();
+
         if (panel != null) panel.SetActive(true);
 
         if (freezeTimeOnShow)
@@ -71,9 +116,71 @@ public class BossEndScreen : MonoBehaviour
         }
     }
 
+    void PlayEndScreenMusic()
+    {
+        foreach (GameMusicPlayer gameMusic in Object.FindObjectsByType<GameMusicPlayer>())
+        {
+            gameMusic.StopMusic();
+        }
+
+        if (!playMenuMusicOnShow || MusicManager.Instance == null)
+        {
+            return;
+        }
+
+        // The screen freezes time immediately after this, so do not use a
+        // time-based crossfade here.
+        MusicManager.Instance.PlayMusic(menuMusicTrackName, 0f);
+    }
+
+    string GetTitle(ResultType resultType)
+    {
+        switch (resultType)
+        {
+            case ResultType.Survived:
+                return "PASSED THE LEVEL!!!";
+            case ResultType.Dehydrated:
+                return "OUT OF WATER";
+            default:
+                return catchMessage;
+        }
+    }
+
+    string GetSubtitle(ResultType resultType, float survivedSeconds)
+    {
+        if (resultType == ResultType.Survived)
+        {
+            return "You survived the full shift.\nPress R to Restart";
+        }
+
+        return "You survived " + FormatTime(survivedSeconds) + ".\nPress R to Restart";
+    }
+
+    Color GetTitleColor(ResultType resultType)
+    {
+        switch (resultType)
+        {
+            case ResultType.Survived:
+                return new Color(0.45f, 0.95f, 0.55f, 1f);
+            case ResultType.Dehydrated:
+                return new Color(0.28f, 0.72f, 1f, 1f);
+            default:
+                return new Color(0.9f, 0.15f, 0.12f, 1f);
+        }
+    }
+
+    string FormatTime(float seconds)
+    {
+        int totalSeconds = Mathf.Max(0, Mathf.FloorToInt(seconds));
+        int minutes = totalSeconds / 60;
+        int remainder = totalSeconds % 60;
+        return minutes + ":" + remainder.ToString("00");
+    }
+
     void RestartScene()
     {
         Time.timeScale = 1f;
+        shown = false;
 
         if (string.IsNullOrEmpty(restartSceneName))
         {

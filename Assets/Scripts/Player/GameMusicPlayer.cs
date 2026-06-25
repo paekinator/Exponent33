@@ -60,4 +60,12 @@ public class GameMusicPlayer : MonoBehaviour
             }
         }
     }
+
+    public void StopMusic()
+    {
+        if (source != null)
+        {
+            source.Stop();
+        }
+    }
 }

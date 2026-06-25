@@ -176,7 +176,11 @@ public class IntroDialogueSequencer : MonoBehaviour
         if (phoneViewmodel != null) phoneViewmodel.enabled = false;
         if (milkItem != null) milkItem.enabled = false;
         if (walkAudio != null) walkAudio.enabled = false;
-        if (controller != null) controller.playerCanMove = false;
+        if (controller != null)
+        {
+            controller.playerCanMove = false;
+            controller.cameraCanMove = false;
+        }
 
         // playerCanMove=false only stops NEW movement forces — with friction
         // set to 0 on the player's collider, any momentum already in flight
@@ -202,7 +206,11 @@ public class IntroDialogueSequencer : MonoBehaviour
         if (phoneViewmodel != null) phoneViewmodel.enabled = true;
         if (milkItem != null) milkItem.enabled = true;
         if (walkAudio != null) walkAudio.enabled = true;
-        if (controller != null) controller.playerCanMove = true;
+        if (controller != null)
+        {
+            controller.playerCanMove = true;
+            controller.cameraCanMove = true;
+        }
 
         onChapterComplete?.Invoke();
     }

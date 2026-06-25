@@ -18,5 +18,8 @@ public class ChargerInteractable : MonoBehaviour, IInteractable, IHoldInteractab
     {
         PlayerStats stats = interactor.GetComponent<PlayerStats>();
         if (stats != null) stats.AddPhone(stats.refillPerSecond * deltaTime);
+
+        PlayerChargeAudio chargeAudio = interactor.GetComponent<PlayerChargeAudio>();
+        if (chargeAudio != null) chargeAudio.HoldChargeTick();
     }
 }

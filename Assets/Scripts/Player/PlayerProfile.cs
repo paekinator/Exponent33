@@ -5,5 +5,19 @@
 /// </summary>
 public static class PlayerProfile
 {
-    public static string PlayerName = "Player";
+    static string playerName = "Player";
+
+    public static string PlayerName
+    {
+        get
+        {
+            if (playerName == "Player")
+            {
+                GameSessionSettings.Load();
+            }
+
+            return playerName;
+        }
+        set => playerName = string.IsNullOrWhiteSpace(value) ? "Player" : value.Trim();
+    }
 }

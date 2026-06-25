@@ -8,6 +8,8 @@ public class PlayerNoiseMeter : MonoBehaviour
 {
     [Header("References")]
     public FirstPersonController controller;
+    [Tooltip("Auto-found if left empty. While hidden, noise is forced to 0 — the boss can't hear a player tucked inside a locker.")]
+    public PlayerHiding hiding;
 
     [Header("Timing")]
     public float revealAfterSeconds = 20f;
@@ -32,14 +34,20 @@ public class PlayerNoiseMeter : MonoBehaviour
     [Tooltip("At 100 noise, the boss can hear this many meters away.")]
     public float maxAudibleRangeMeters = 50f;
 
+    [Tooltip("Crouching resizes the player's collider, which can spuriously fire a landing/wall-hit collision event from the physics engine reacting to the sudden resize — not an actual landing or wall hit. Suppress instant noise spikes for this long after any crouch state change.")]
+    public float crouchTransitionGraceSeconds = 0.2f;
+
     float currentNoise;
     float smoothedRate;
     bool wasGroundedLastFrame;
     bool wasJustLanded;
     bool wasWallHit;
     float lastWallHitTime = -999f;
+    bool lastCrouchState;
+    float crouchGraceUntil = -999f;
 
     float enabledAtTime;
+    bool wasRevealed;
 
     public float CurrentNoise => currentNoise;
     public float NormalizedNoise => maxNoise > 0f ? currentNoise / maxNoise : 0f;
@@ -59,6 +67,10 @@ public class PlayerNoiseMeter : MonoBehaviour
         {
             controller = GetComponent<FirstPersonController>();
         }
+        if (hiding == null)
+        {
+            hiding = GetComponent<PlayerHiding>();
+        }
 
         // Assume grounded at start so the player doesn't register a phantom
         // "landing" spike on the very first frame.
@@ -71,12 +83,37 @@ public class PlayerNoiseMeter : MonoBehaviour
     void OnEnable()
     {
         enabledAtTime = Time.time;
+        wasRevealed = false;
+        lastCrouchState = controller != null && controller.IsCrouched;
     }
 
     void Update()
     {
-        TrackLanding();
-        UpdateNoiseLevel();
+        if (hiding != null && hiding.isHidden)
+        {
+            // Tucked inside a locker — silent regardless of whatever was
+            // happening the instant before E was pressed.
+            currentNoise = 0f;
+            smoothedRate = 0f;
+        }
+        else
+        {
+            TrackLanding();
+            TrackCrouchTransition();
+            UpdateNoiseLevel();
+        }
+
+        // The noise level always starts from 0 the moment it actually becomes
+        // visible/active — whether that's the natural reveal timer or a
+        // story-beat ForceReveal() — so nothing accumulated silently while
+        // hidden ever shows up as a surprise jump.
+        bool revealedNow = IsRevealed;
+        if (revealedNow && !wasRevealed)
+        {
+            currentNoise = 0f;
+            smoothedRate = 0f;
+        }
+        wasRevealed = revealedNow;
     }
 
     void TrackLanding()
@@ -90,17 +127,32 @@ public class PlayerNoiseMeter : MonoBehaviour
         wasGroundedLastFrame = grounded;
     }
 
+    void TrackCrouchTransition()
+    {
+        bool crouched = controller != null && controller.IsCrouched;
+        if (crouched != lastCrouchState)
+        {
+            // Crouch resizes the collider, which can spuriously trigger a
+            // landing or wall-hit collision event on the same frame — not a
+            // real one. Swallow instant spikes for a short grace window.
+            crouchGraceUntil = Time.time + crouchTransitionGraceSeconds;
+            lastCrouchState = crouched;
+        }
+    }
+
     void UpdateNoiseLevel()
     {
+        bool inCrouchGrace = Time.time < crouchGraceUntil;
+
         if (wasJustLanded)
         {
-            currentNoise += landingNoise;
+            if (!inCrouchGrace) currentNoise += landingNoise;
             wasJustLanded = false;
         }
 
         if (wasWallHit)
         {
-            currentNoise += wallHitNoise;
+            if (!inCrouchGrace) currentNoise += wallHitNoise;
             wasWallHit = false;
         }
 

@@ -14,6 +14,14 @@ using UnityEngine.AI;
 ///   the player's live position. The instant the player is out of range again
 ///   it drops straight back to PHONE — no lingering timer.
 ///
+///   HIDING — a hidden player (PlayerHiding) can't be spotted, and their
+///   PlayerNoiseMeter is forced to 0, so they can't be heard either. If the
+///   boss was mid-chase it still finishes investigating the last-seen spot
+///   (the "walks around" search) — but once that resolves to PHONE while
+///   still within hiddenGiveUpDistance of the hidden player, it deliberately
+///   walks away (still on the phone animation) instead of idly pacing right
+///   next to the hiding spot, until it's actually put that distance behind it.
+///
 ///   RUN (spotted) — line-of-sight raycast (blocked by walls, and by hiding).
 ///   The moment the player is actually spotted (not on every frame Run stays
 ///   active, and not for the distress override below) it screams once, then
@@ -24,6 +32,15 @@ using UnityEngine.AI;
 ///   DISTRESS (phone dead, set externally by PlayerStats) overrides everything
 ///   and beelines the player's exact live position. No scream — that's reserved
 ///   for an actual visual spotting.
+///
+///   EXHAUSTION — running continuously (Run mode, including distress) for
+///   tiredAfterRunningSeconds forces a tiredDurationSeconds recovery: locked
+///   into the Walk animation at tiredSpeedMultiplier x normal walk speed
+///   (default 0.5x — "super slow") plus a panting loop, the same clip and
+///   restart-style as the player's own low-water panting. Whatever it was
+///   chasing stays the target — it just can't sprint there until the timer
+///   clears, after which it's free to run again immediately if conditions
+///   still call for it.
 ///
 ///   CATCH — within catchDistance of the player fires onCatchPlayer (wire to
 ///   BossEndScreen.ShowEndScreen()).
@@ -90,12 +107,24 @@ public class BossAI : MonoBehaviour
     [Tooltip("Distance from the last-seen spot at which the boss gives up investigating and drops back down.")]
     public float investigateArriveDistance = 1.5f;
 
+    [Header("Hiding — give up and back off")]
+    [Tooltip("Once the boss isn't running or hearing anything (search timed out / player ducked into a hide spot), if it's still within this distance of a HIDDEN player it deliberately walks away — phone animation, not idle wander on the spot — until it clears this distance.")]
+    public float hiddenGiveUpDistance = 10f;
+
     [Header("Catch")]
     public float catchDistance = 1.5f;
 
     [Header("Distress (phone dead)")]
     [Tooltip("Set by PlayerStats when the player's phone dies. Overrides everything else and beelines the player.")]
     public bool distressActive = false;
+
+    [Header("Exhaustion (forced recovery walk after sustained running)")]
+    [Tooltip("Running continuously for this many seconds (Run mode, including distress) forces a tired recovery period.")]
+    public float tiredAfterRunningSeconds = 10f;
+    [Tooltip("How long the forced slow walk lasts before the boss is eligible to run again.")]
+    public float tiredDurationSeconds = 5f;
+    [Tooltip("Multiplies the normal walk speed while tired — 0.5 = half speed ('super slow').")]
+    public float tiredSpeedMultiplier = 0.5f;
 
     [Header("Speed Escalation Over Time")]
     [Tooltip("Uses GameTimer's elapsed seconds — the visible stopwatch on screen, which pauses during dialogue — never level-load or any other clock.")]
@@ -112,12 +141,13 @@ public class BossAI : MonoBehaviour
     [Header("Audio — Movement Loops (clips only, sources are built at runtime)")]
     public AudioClip phoneClip;
     [Tooltip("Can go above 1 to boost past the clip's original recorded loudness.")]
-    [Range(0f, 2f)] public float phoneVolume = 1.6f;
+    [Range(0f, 5f)] public float phoneVolume = 3.5f;
     public AudioClip walkClip;
     [Tooltip("Can go above 1 to boost past the clip's original recorded loudness.")]
-    [Range(0f, 3f)] public float walkVolume = 2.6f;
+    [Range(0f, 6f)] public float walkVolume = 5f;
     public AudioClip runClip;
-    [Range(0f, 1f)] public float runVolume = 0.7f;
+    [Tooltip("Can go above 1 to boost past the clip's original recorded loudness.")]
+    [Range(0f, 4f)] public float runVolume = 3f;
     [Tooltip("How long each loop takes to fade in/out when the mode switches.")]
     public float loopFadeSeconds = 0.5f;
 
@@ -130,11 +160,17 @@ public class BossAI : MonoBehaviour
     [Header("Audio — Suspense Emitter (plays only while WALKING or RUNNING)")]
     [Tooltip("Continuous sound from the boss's position, active only in the Walk and Run tiers (silent while idling on the phone). Base volume can go above 1 to boost past the clip's original loudness; on top of that, it's real 3D positional audio, so Unity's own distance falloff still makes it louder the closer the boss actually is.")]
     public AudioClip emitClip;
-    [Range(0f, 2f)] public float emitVolume = 1.6f;
+    [Range(0f, 5f)] public float emitVolume = 3.5f;
     [Tooltip("Within this distance, the emitter is at full volume.")]
     public float emitMinDistance = 4f;
     [Tooltip("Beyond this distance, the emitter is inaudible.")]
     public float emitMaxDistance = 60f;
+
+    [Header("Audio — Panting (plays only while tired, same clip/style as the player's)")]
+    public AudioClip pantingClip;
+    [Range(0f, 1f)] public float pantingVolume = 0.8f;
+    [Tooltip("Loops only the first N seconds of the clip, same trick as PlayerLowWaterPanting — avoids a bad loop point in any silent/tail audio later in the file.")]
+    public float pantingFirstSecondsOnly = 10f;
 
     const string P_MOVE_MODE = "MoveMode";
 
@@ -148,6 +184,7 @@ public class BossAI : MonoBehaviour
     AudioSource _runLoop;
     AudioSource _screamSource;
     AudioSource _emitSource;
+    AudioSource _pantingSource;
 
     bool _activated;
     bool _caught;
@@ -155,11 +192,18 @@ public class BossAI : MonoBehaviour
     bool _wasSpotted;
     float _lastScreamTime = -999f;
 
+    float _continuousRunTimer;
+    bool _tired;
+    float _tiredTimer;
+
     Vector3 _lastSeenPos;
     bool _investigating;
 
     Vector3 _wanderTarget;
     float _nextWanderTime;
+
+    Vector3 _retreatTarget;
+    bool _hasRetreatTarget;
 
     [Header("Events")]
     [Tooltip("Auto-found if left empty. Fires alongside onCatchPlayer below, so the end screen works with zero manual wiring.")]
@@ -169,6 +213,8 @@ public class BossAI : MonoBehaviour
 
     void Awake()
     {
+        ApplySavedDifficulty();
+
         _agent = GetComponent<NavMeshAgent>();
         _animator = GetComponent<Animator>();
         _renderers = GetComponentsInChildren<Renderer>();
@@ -203,6 +249,15 @@ public class BossAI : MonoBehaviour
         _emitSource.volume = 0f;
         _emitSource.clip = emitClip;
 
+        // Not a looping AudioSource — same restart-the-first-N-seconds trick as
+        // PlayerLowWaterPanting, driven manually in UpdatePantingAudio().
+        _pantingSource = gameObject.AddComponent<AudioSource>();
+        _pantingSource.playOnAwake = false;
+        _pantingSource.loop = false;
+        _pantingSource.spatialBlend = 1f;
+        _pantingSource.volume = pantingVolume;
+        _pantingSource.clip = pantingClip;
+
         if (gameTimer == null) gameTimer = Object.FindAnyObjectByType<GameTimer>();
         if (noiseMeter == null) noiseMeter = Object.FindAnyObjectByType<PlayerNoiseMeter>();
         if (endScreen == null) endScreen = Object.FindAnyObjectByType<BossEndScreen>();
@@ -217,6 +272,35 @@ public class BossAI : MonoBehaviour
             _playerHiding = player.GetComponent<PlayerHiding>();
             _lastSeenPos = player.position;
         }
+    }
+
+    void ApplySavedDifficulty()
+    {
+        GameSessionSettings.Load();
+
+        float speedMultiplier = 1f;
+        float sightMultiplier = 1f;
+        float escalationMultiplier = 1f;
+
+        switch (GameSessionSettings.Difficulty)
+        {
+            case GameDifficulty.Easy:
+                speedMultiplier = 0.85f;
+                sightMultiplier = 0.8f;
+                escalationMultiplier = 0.9f;
+                break;
+            case GameDifficulty.Hard:
+                speedMultiplier = 1.2f;
+                sightMultiplier = 1.25f;
+                escalationMultiplier = 1.15f;
+                break;
+        }
+
+        phoneSpeed *= speedMultiplier;
+        walkSpeed *= speedMultiplier;
+        runSpeed *= speedMultiplier;
+        sightRange *= sightMultiplier;
+        escalationFactor *= escalationMultiplier;
     }
 
     AudioSource CreateLoopSource(AudioClip clip)
@@ -249,73 +333,161 @@ public class BossAI : MonoBehaviour
 
         float dist = Vector3.Distance(transform.position, player.position);
 
-        if (distressActive)
-        {
-            SetMode(Mode.Run);
-            _agent.speed = CurrentSpeed(Mode.Run);
-            SetDestinationSafe(player.position);
-            UpdateLoopAudio(Mode.Run);
-            CheckStuck();
-            if (dist <= catchDistance) CatchPlayer();
-            return;
-        }
-
-        bool hidden = respectsHiding && _playerHiding != null && _playerHiding.isHidden;
-        bool spotted = !hidden && IsPlayerSpotted(dist);
-
-        // Scream on the frame the player is actually (re-)spotted — independent
-        // of which Mode that happens to put us in, so the distress override
-        // above can never trigger it — but rate-limited: re-spotting within
-        // screamCooldownSeconds of the last scream stays silent.
-        if (spotted && !_wasSpotted && Time.time - _lastScreamTime >= screamCooldownSeconds)
-        {
-            PlayScream();
-            _lastScreamTime = Time.time;
-        }
-        _wasSpotted = spotted;
-
-        if (spotted)
-        {
-            _lastSeenPos = player.position;
-            _investigating = true;
-        }
-        else if (_investigating && Vector3.Distance(transform.position, _lastSeenPos) <= investigateArriveDistance)
-        {
-            _investigating = false;
-        }
-
-        bool running = spotted || _investigating;
-
-        bool heard = !hidden && !running && noiseMeter != null
-                     && noiseMeter.CurrentNoise > 0f
-                     && dist <= noiseMeter.AudibleRangeMeters;
-
         Mode newMode;
         Vector3 target;
 
-        if (running)
+        if (distressActive)
         {
             newMode = Mode.Run;
-            target = _lastSeenPos;
-        }
-        else if (heard)
-        {
-            newMode = Mode.Walk;
             target = player.position;
         }
         else
         {
-            newMode = Mode.Phone;
-            target = dist > leashDistance ? player.position : GetWanderTarget();
+            bool hidden = respectsHiding && _playerHiding != null && _playerHiding.isHidden;
+            bool spotted = !hidden && IsPlayerSpotted(dist);
+
+            // Scream on the frame the player is actually (re-)spotted — independent
+            // of which Mode that happens to put us in, so the distress override
+            // above can never trigger it — but rate-limited: re-spotting within
+            // screamCooldownSeconds of the last scream stays silent.
+            if (spotted && !_wasSpotted && Time.time - _lastScreamTime >= screamCooldownSeconds)
+            {
+                PlayScream();
+                _lastScreamTime = Time.time;
+            }
+            _wasSpotted = spotted;
+
+            if (spotted)
+            {
+                _lastSeenPos = player.position;
+                _investigating = true;
+            }
+            else if (_investigating && Vector3.Distance(transform.position, _lastSeenPos) <= investigateArriveDistance)
+            {
+                _investigating = false;
+            }
+
+            bool running = spotted || _investigating;
+
+            bool heard = !hidden && !running && noiseMeter != null
+                         && noiseMeter.CurrentNoise > 0f
+                         && dist <= noiseMeter.AudibleRangeMeters;
+
+            if (running)
+            {
+                newMode = Mode.Run;
+                target = _lastSeenPos;
+            }
+            else if (heard)
+            {
+                newMode = Mode.Walk;
+                target = player.position;
+            }
+            else
+            {
+                newMode = Mode.Phone;
+
+                if (hidden && dist < hiddenGiveUpDistance)
+                {
+                    target = GetRetreatTarget();
+                }
+                else
+                {
+                    _hasRetreatTarget = false;
+                    target = dist > leashDistance ? player.position : GetWanderTarget();
+                }
+            }
+        }
+
+        UpdateExhaustion(newMode);
+
+        float speed;
+        if (_tired)
+        {
+            // Forced recovery: still heads for the same target, just can't
+            // sprint there — locked to a slow Walk regardless of what the
+            // logic above actually decided.
+            newMode = Mode.Walk;
+            speed = CurrentSpeed(Mode.Walk) * tiredSpeedMultiplier;
+        }
+        else
+        {
+            speed = CurrentSpeed(newMode);
         }
 
         SetMode(newMode);
-        _agent.speed = CurrentSpeed(newMode);
+        _agent.speed = speed;
         SetDestinationSafe(target);
         UpdateLoopAudio(newMode);
+        UpdatePantingAudio();
         CheckStuck();
 
         if (dist <= catchDistance) CatchPlayer();
+    }
+
+    // =========================================================================
+    // EXHAUSTION — sustained running forces a slow, panting recovery walk
+    // =========================================================================
+
+    /// <summary>Tracks unbroken time spent in Run mode (whatever the cause —
+    /// spotted, investigating, or distress) and flips on the tired recovery
+    /// once it hits tiredAfterRunningSeconds. Dropping out of Run for even a
+    /// frame resets the clock — only continuous running counts.</summary>
+    void UpdateExhaustion(Mode computedMode)
+    {
+        if (_tired)
+        {
+            _tiredTimer -= Time.deltaTime;
+            if (_tiredTimer <= 0f)
+            {
+                _tired = false;
+                _continuousRunTimer = 0f;
+            }
+            return;
+        }
+
+        if (computedMode == Mode.Run)
+        {
+            _continuousRunTimer += Time.deltaTime;
+            if (_continuousRunTimer >= tiredAfterRunningSeconds)
+            {
+                _tired = true;
+                _tiredTimer = tiredDurationSeconds;
+                _continuousRunTimer = 0f;
+            }
+        }
+        else
+        {
+            _continuousRunTimer = 0f;
+        }
+    }
+
+    /// <summary>Same restart-the-first-N-seconds trick as PlayerLowWaterPanting:
+    /// not a looping AudioSource, just manually rewound once it reaches
+    /// pantingFirstSecondsOnly (or the clip's own end, if shorter).</summary>
+    void UpdatePantingAudio()
+    {
+        if (_pantingSource.clip == null) return;
+
+        if (_tired)
+        {
+            if (!_pantingSource.isPlaying)
+            {
+                _pantingSource.time = 0f;
+                _pantingSource.Play();
+            }
+            else if (_pantingSource.time >= Mathf.Min(pantingFirstSecondsOnly, _pantingSource.clip.length))
+            {
+                _pantingSource.time = 0f;
+                _pantingSource.Play();
+            }
+
+            _pantingSource.volume = pantingVolume;
+        }
+        else if (_pantingSource.isPlaying)
+        {
+            _pantingSource.Stop();
+        }
     }
 
     // =========================================================================
@@ -434,6 +606,47 @@ public class BossAI : MonoBehaviour
         return _wanderTarget;
     }
 
+    /// <summary>Walks deliberately away from a player who's hidden nearby —
+    /// not the same as idle wander, which just paces near the boss's own
+    /// current spot (which could still be right next to the locker).
+    /// Picks a NavMesh point at least hiddenGiveUpDistance from the player's
+    /// position, re-rolling only once the cached one stops being far enough
+    /// (player re-hid elsewhere) or the boss has actually arrived.</summary>
+    Vector3 GetRetreatTarget()
+    {
+        bool needNew = !_hasRetreatTarget
+            || Vector3.Distance(player.position, _retreatTarget) < hiddenGiveUpDistance
+            || (!_agent.pathPending && _agent.hasPath && _agent.remainingDistance <= 0.5f);
+
+        if (!needNew)
+        {
+            return _retreatTarget;
+        }
+
+        for (int attempt = 0; attempt < 8; attempt++)
+        {
+            Vector2 dir2D = Random.insideUnitCircle.normalized;
+            Vector3 candidate = player.position + new Vector3(dir2D.x, 0f, dir2D.y) * (hiddenGiveUpDistance + 5f);
+
+            if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, 10f, NavMesh.AllAreas)
+                && Vector3.Distance(player.position, hit.position) >= hiddenGiveUpDistance)
+            {
+                _retreatTarget = hit.position;
+                _hasRetreatTarget = true;
+                return _retreatTarget;
+            }
+        }
+
+        // Cramped space — couldn't find a point far enough in 8 tries. Settle
+        // for stepping directly away from the player along whatever's open.
+        Vector3 away = transform.position + (transform.position - player.position).normalized * hiddenGiveUpDistance;
+        _retreatTarget = NavMesh.SamplePosition(away, out NavMeshHit fallback, hiddenGiveUpDistance, NavMesh.AllAreas)
+            ? fallback.position
+            : transform.position;
+        _hasRetreatTarget = true;
+        return _retreatTarget;
+    }
+
     // =========================================================================
     // SPEED / ESCALATION
     // =========================================================================
@@ -484,6 +697,10 @@ public class BossAI : MonoBehaviour
         EnsureOnNavMesh(instant: true);
         _agent.isStopped = false;
         _mode = Mode.Phone;
+        _tired = false;
+        _tiredTimer = 0f;
+        _continuousRunTimer = 0f;
+        _hasRetreatTarget = false;
         SetRenderersEnabled(true);
         if (player != null) _lastSeenPos = player.position;
     }

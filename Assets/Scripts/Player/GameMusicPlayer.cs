@@ -6,12 +6,15 @@ using UnityEngine;
 public class GameMusicPlayer : MonoBehaviour
 {
     public AudioClip musicClip;
-    [Range(0f, 1f)] public float startVolume = 0.02f;
-    [Range(0f, 1f)] public float maxVolume = 0.06f;
+    [Range(0f, 1f)] public float startVolume = 0.1f;
+    [Range(0f, 1f)] public float maxVolume = 0.2f;
     public float rampSeconds = 360f;
+    [Tooltip("Jumps past this many seconds of the clip on the very first play — skips a slow/quiet intro so the music is immediately audible. Only applied once; later loops play the full clip from the top.")]
+    public float skipIntroSeconds = 5f;
 
     AudioSource source;
     float startedAt;
+    bool hasStartedOnce;
 
     void Awake()
     {
@@ -49,6 +52,12 @@ public class GameMusicPlayer : MonoBehaviour
         if (source.clip != null && !source.isPlaying)
         {
             source.Play();
+
+            if (!hasStartedOnce)
+            {
+                source.time = Mathf.Clamp(skipIntroSeconds, 0f, Mathf.Max(0f, source.clip.length - 0.1f));
+                hasStartedOnce = true;
+            }
         }
     }
 }

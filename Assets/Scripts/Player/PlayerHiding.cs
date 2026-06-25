@@ -8,6 +8,8 @@ public class PlayerHiding : MonoBehaviour
     [Header("Auto Found References")]
     public MonoBehaviour movementController;
     public Transform cameraJoint;
+    public Camera playerCamera;
+    public Rigidbody playerRigidbody;
 
     [Header("Hidden Look Settings")]
     public bool allowLookWhileHidden = true;
@@ -17,7 +19,9 @@ public class PlayerHiding : MonoBehaviour
 
     private Vector3 originalPosition;
     private Quaternion originalRotation;
-    private Quaternion originalCameraJointLocalRotation;
+    private Vector3 cameraJointNeutralLocalPosition;
+    private Quaternion originalCameraLocalRotation;
+    private bool wasRigidbodyKinematic;
 
     private Quaternion hiddenStartRotation;
     private float hiddenYaw = 0f;
@@ -27,6 +31,15 @@ public class PlayerHiding : MonoBehaviour
     {
         FindMovementController();
         FindCameraJoint();
+
+        playerRigidbody = GetComponent<Rigidbody>();
+
+        // Captured here (before any movement/headbob has happened) so it's
+        // guaranteed to be the true resting position to snap back to on hide.
+        if (cameraJoint != null)
+        {
+            cameraJointNeutralLocalPosition = cameraJoint.localPosition;
+        }
     }
 
     void Update()
@@ -48,7 +61,6 @@ public class PlayerHiding : MonoBehaviour
             if (script.GetType().Name == "FirstPersonController")
             {
                 movementController = script;
-                Debug.Log("Found movement controller: " + script.GetType().Name);
                 return;
             }
         }
@@ -63,7 +75,11 @@ public class PlayerHiding : MonoBehaviour
         if (foundJoint != null)
         {
             cameraJoint = foundJoint;
-            Debug.Log("Found camera joint.");
+            // FirstPersonController only ever moves Joint's LOCAL POSITION
+            // (headbob) — mouse-look pitch is applied directly to the camera
+            // itself, a child of Joint. Pitch must target the camera, not
+            // Joint, or the two fight/compound into a broken-looking view.
+            playerCamera = foundJoint.GetComponentInChildren<Camera>();
         }
         else
         {
@@ -80,10 +96,18 @@ public class PlayerHiding : MonoBehaviour
         originalPosition = transform.position;
         originalRotation = transform.rotation;
 
+        // Cancel any in-progress headbob offset and any leftover pitch from
+        // the instant before E was pressed — without this the view while
+        // hidden inherits whatever stale look angle/bob the player happened
+        // to have, instead of looking dead level out of the locker.
         if (cameraJoint != null)
         {
-            originalCameraJointLocalRotation = cameraJoint.localRotation;
-            cameraJoint.localRotation = Quaternion.identity;
+            cameraJoint.localPosition = cameraJointNeutralLocalPosition;
+        }
+        if (playerCamera != null)
+        {
+            originalCameraLocalRotation = playerCamera.transform.localRotation;
+            playerCamera.transform.localRotation = Quaternion.identity;
         }
 
         transform.position = hideCameraPoint.position;
@@ -98,7 +122,17 @@ public class PlayerHiding : MonoBehaviour
             movementController.enabled = false;
         }
 
-        Debug.Log("Player is hiding.");
+        // Sticks the player to the locker: a kinematic rigidbody ignores
+        // gravity, residual velocity, and collisions, but can still be moved
+        // directly via transform (the snap above, and the clamped look-around
+        // below) — so nothing physical can drag the player off the spot.
+        if (playerRigidbody != null)
+        {
+            wasRigidbodyKinematic = playerRigidbody.isKinematic;
+            playerRigidbody.linearVelocity = Vector3.zero;
+            playerRigidbody.angularVelocity = Vector3.zero;
+            playerRigidbody.isKinematic = true;
+        }
     }
 
     public void ExitHideSpot()
@@ -107,20 +141,23 @@ public class PlayerHiding : MonoBehaviour
 
         isHidden = false;
 
+        if (playerRigidbody != null)
+        {
+            playerRigidbody.isKinematic = wasRigidbodyKinematic;
+        }
+
         transform.position = originalPosition;
         transform.rotation = originalRotation;
 
-        if (cameraJoint != null)
+        if (playerCamera != null)
         {
-            cameraJoint.localRotation = originalCameraJointLocalRotation;
+            playerCamera.transform.localRotation = originalCameraLocalRotation;
         }
 
         if (movementController != null)
         {
             movementController.enabled = true;
         }
-
-        Debug.Log("Player exited hiding.");
     }
 
     void HandleHiddenLook()
@@ -136,9 +173,9 @@ public class PlayerHiding : MonoBehaviour
 
         transform.rotation = hiddenStartRotation * Quaternion.Euler(0f, hiddenYaw, 0f);
 
-        if (cameraJoint != null)
+        if (playerCamera != null)
         {
-            cameraJoint.localRotation = Quaternion.Euler(hiddenPitch, 0f, 0f);
+            playerCamera.transform.localRotation = Quaternion.Euler(hiddenPitch, 0f, 0f);
         }
     }
 }

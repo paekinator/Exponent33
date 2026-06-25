@@ -1,8 +1,19 @@
 using System.Collections;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 public class PlayerHiding : MonoBehaviour
 {
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [DllImport("__Internal")] private static extern void BackShiftMouse_Init();
+    [DllImport("__Internal")] private static extern void BackShiftMouse_RequestPointerLock();
+    [DllImport("__Internal")] private static extern float BackShiftMouse_ConsumeDeltaX();
+    [DllImport("__Internal")] private static extern float BackShiftMouse_ConsumeDeltaY();
+    [DllImport("__Internal")] private static extern int BackShiftMouse_IsPointerLocked();
+    private const float WebGLMouseDeltaScale = 0.1f;
+    private bool webglMouseInputReady;
+#endif
+
     [Header("State")]
     public bool isHidden = false;
 
@@ -40,6 +51,11 @@ public class PlayerHiding : MonoBehaviour
 
     void Awake()
     {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        BackShiftMouse_Init();
+        webglMouseInputReady = true;
+#endif
+
         FindMovementController();
         FindCameraJoint();
 
@@ -63,6 +79,25 @@ public class PlayerHiding : MonoBehaviour
     {
         if (isHidden && allowLookWhileHidden)
         {
+            // FirstPersonController (and its own self-healing relock) is
+            // disabled while hidden, so this look path needs the same guard —
+            // otherwise a dropped pointer lock leaves looking around inside
+            // the locker resisting exactly like normal mouse-look would.
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Browsers only grant pointer lock from a direct user gesture —
+            // a frame-loop call gets silently refused, so only retry on a
+            // genuine click rather than hammering the request every frame.
+            if (!IsWebGLPointerLocked() && (Input.GetMouseButtonDown(0) || Input.anyKeyDown))
+            {
+                BackShiftMouse_RequestPointerLock();
+            }
+#else
+            if (Cursor.lockState != CursorLockMode.Locked)
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+            }
+#endif
+
             HandleHiddenLook();
         }
     }
@@ -210,8 +245,18 @@ public class PlayerHiding : MonoBehaviour
 
     void HandleHiddenLook()
     {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        float mouseX = 0f;
+        float mouseY = 0f;
+        if (webglMouseInputReady)
+        {
+            mouseX = BackShiftMouse_ConsumeDeltaX() * WebGLMouseDeltaScale * hiddenLookSensitivity;
+            mouseY = -BackShiftMouse_ConsumeDeltaY() * WebGLMouseDeltaScale * hiddenLookSensitivity;
+        }
+#else
         float mouseX = Input.GetAxis("Mouse X") * hiddenLookSensitivity;
         float mouseY = Input.GetAxis("Mouse Y") * hiddenLookSensitivity;
+#endif
 
         hiddenYaw += mouseX;
         hiddenPitch -= mouseY;
@@ -226,4 +271,11 @@ public class PlayerHiding : MonoBehaviour
             playerCamera.transform.localRotation = Quaternion.Euler(hiddenPitch, 0f, 0f);
         }
     }
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    bool IsWebGLPointerLocked()
+    {
+        return BackShiftMouse_IsPointerLocked() != 0;
+    }
+#endif
 }

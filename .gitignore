@@ -81,6 +81,9 @@ mono_crash.*
 *.unitypackage.meta
 *.app
 
+# Local helper binaries used by Codex/session tooling.
+/LocalTools/
+
 # Crashlytics generated file
 crashlytics-build.properties
 

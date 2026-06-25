@@ -6,6 +6,7 @@
 
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -38,6 +39,20 @@ public class FirstPersonController : MonoBehaviour
     private float yaw = 0.0f;
     private float pitch = 0.0f;
     private Image crosshairObject;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [DllImport("__Internal")] private static extern void BackShiftMouse_Init();
+    [DllImport("__Internal")] private static extern void BackShiftMouse_RequestPointerLock();
+    [DllImport("__Internal")] private static extern float BackShiftMouse_ConsumeDeltaX();
+    [DllImport("__Internal")] private static extern float BackShiftMouse_ConsumeDeltaY();
+    [DllImport("__Internal")] private static extern int BackShiftMouse_IsPointerLocked();
+
+    // Browser pointer lock exposes raw movementX/movementY deltas. Those are
+    // much steadier for a first-person camera than Unity WebGL's smoothed
+    // Input.GetAxis path or a frame-to-frame virtual cursor position.
+    private const float WebGLMouseDeltaScale = 0.1f;
+    private bool _webglMouseInputReady;
+#endif
 
     #region Camera Zoom Variables
 
@@ -214,6 +229,11 @@ public class FirstPersonController : MonoBehaviour
 
     void Start()
     {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        BackShiftMouse_Init();
+        _webglMouseInputReady = true;
+#endif
+
         if(lockCursor)
         {
             Cursor.lockState = CursorLockMode.Locked;
@@ -290,25 +310,88 @@ public class FirstPersonController : MonoBehaviour
 
     float camRotation;
 
+    // Belt-and-suspenders alongside the per-frame check in Update(): re-lock
+    // the instant the window regains focus (alt-tab back in, etc.) rather
+    // than waiting for the next Update() tick to notice the lock dropped.
+    // Skipped on WebGL — this callback isn't a direct user gesture either,
+    // so the browser would just refuse it the same as the per-frame version
+    // would; the click-driven re-lock in Update() is what actually works there.
+    void OnApplicationFocus(bool hasFocus)
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        return;
+#else
+        if (hasFocus && lockCursor)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+        }
+#endif
+    }
+
     private void Update()
     {
         isSprinting = ShouldSprint();
 
         #region Camera
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // Browsers enforce a much stricter rule than a native OS: the Pointer
+        // Lock API can ONLY be (re-)granted in direct response to a genuine
+        // user gesture (a click, a keypress) — requesting it from a plain
+        // frame-loop call is silently refused, and hammering the request
+        // every frame with no gesture behind it can make some browsers
+        // temporarily block the API outright. So here, only try to re-lock
+        // on an actual click — that's a real gesture the browser will honor.
+        if (lockCursor && !IsWebGLPointerLocked() && (Input.GetMouseButtonDown(0) || Input.anyKeyDown))
+        {
+            BackShiftMouse_RequestPointerLock();
+        }
+#else
+        // Native builds: the OS can silently drop pointer lock — alt-tab, a
+        // focus blip, certain driver quirks — with nothing telling the game
+        // it happened. Once that happens, Input.GetAxis("Mouse X"/"Y") is
+        // limited by the REAL system cursor hitting the edge of the window,
+        // so turning one direction works only until the cursor physically
+        // can't move further that way — exactly "I try to turn left and it
+        // won't let me." Re-asserting every frame catches it within a frame,
+        // before it's ever noticeable, instead of staying broken all session.
+        if (lockCursor && Cursor.lockState != CursorLockMode.Locked)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+        }
+#endif
+
         // Control camera movement
         if(cameraCanMove && playerCamera != null)
         {
-            yaw = transform.localEulerAngles.y + Input.GetAxis("Mouse X") * mouseSensitivity;
+            float mouseDeltaX, mouseDeltaY;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+            if (_webglMouseInputReady)
+            {
+                mouseDeltaX = BackShiftMouse_ConsumeDeltaX() * WebGLMouseDeltaScale;
+                mouseDeltaY = -BackShiftMouse_ConsumeDeltaY() * WebGLMouseDeltaScale;
+            }
+            else
+            {
+                mouseDeltaX = 0f;
+                mouseDeltaY = 0f;
+            }
+#else
+            mouseDeltaX = Input.GetAxis("Mouse X");
+            mouseDeltaY = Input.GetAxis("Mouse Y");
+#endif
+
+            yaw = transform.localEulerAngles.y + mouseDeltaX * mouseSensitivity;
 
             if (!invertCamera)
             {
-                pitch -= mouseSensitivity * Input.GetAxis("Mouse Y");
+                pitch -= mouseSensitivity * mouseDeltaY;
             }
             else
             {
                 // Inverted Y
-                pitch += mouseSensitivity * Input.GetAxis("Mouse Y");
+                pitch += mouseSensitivity * mouseDeltaY;
             }
 
             // Clamp pitch between lookAngle
@@ -522,6 +605,13 @@ public class FirstPersonController : MonoBehaviour
             && !isSprintCooldown
             && (unlimitedSprint || sprintRemaining > 0f);
     }
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    private bool IsWebGLPointerLocked()
+    {
+        return BackShiftMouse_IsPointerLocked() != 0;
+    }
+#endif
 
     // Sets isGrounded based on a raycast sent straigth down from the player object
     private void CheckGround()

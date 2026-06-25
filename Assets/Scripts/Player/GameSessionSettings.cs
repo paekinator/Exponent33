@@ -9,8 +9,8 @@ public enum GameDifficulty
 
 public static class GameSessionSettings
 {
-    const string PlayerNameKey = "LastShift.PlayerName";
-    const string DifficultyKey = "LastShift.Difficulty";
+    const string PlayerNameKey = "BackShift.PlayerName";
+    const string DifficultyKey = "BackShift.Difficulty";
 
     public static string PlayerName { get; private set; } = "Player";
     public static GameDifficulty Difficulty { get; private set; } = GameDifficulty.Medium;

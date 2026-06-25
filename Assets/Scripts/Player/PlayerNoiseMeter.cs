@@ -1,8 +1,14 @@
 using UnityEngine;
 
 /// <summary>
-/// Continuous player noise meter for boss sensing.
-/// Owns only the player-side noise value; boss movement can read this later.
+/// Event-based player noise meter for boss sensing. Noise is NOT an
+/// accumulating total — each frame it's just whichever single source is
+/// currently loudest (running/walking/landing/wall-hit), snapped to
+/// instantly. The only thing that happens gradually is the fall back down:
+/// once nothing is making noise, it drains fast (decayPerSecond) toward 0.
+/// This means a one-off spike (landing, a wall hit) decays away in about
+/// two seconds, and sustained noise (running) only lasts as long as you
+/// keep doing it — stand still or go quiet and the boss loses you fast.
 /// </summary>
 public class PlayerNoiseMeter : MonoBehaviour
 {
@@ -14,21 +20,20 @@ public class PlayerNoiseMeter : MonoBehaviour
     [Header("Timing")]
     public float revealAfterSeconds = 20f;
 
-    [Header("Noise")]
+    [Header("Noise Levels (snapped to instantly, not accumulated)")]
     public float maxNoise = 100f;
-    public float sprintNoisePerSecond = 20f;
-    public float walkNoisePerSecond = 2f;
-    public float quietDecayPerSecond = 10f;
-    public float landingNoise = 20f;
-    public float wallHitNoise = 5f;
-    [Tooltip("Minimum time between wall-hit noise spikes, so sliding along a wall doesn't spam +5 every frame.")]
+    [Tooltip("Noise level while sprinting (held, every frame you're actually moving).")]
+    public float runningNoise = 80f;
+    [Tooltip("Noise level while walking at normal pace (held, every frame you're actually moving).")]
+    public float walkingNoise = 30f;
+    [Tooltip("One-off spike the instant you land from a fall.")]
+    public float fallingNoise = 100f;
+    [Tooltip("One-off spike the instant you hit a wall.")]
+    public float wallHitNoise = 20f;
+    [Tooltip("Minimum time between wall-hit spikes, so sliding along a wall doesn't spam one every frame.")]
     public float wallHitCooldown = 0.5f;
-
-    [Header("Smoothing")]
-    [Tooltip("How long it takes the noise RATE (decay/walk) to ease into its new target when movement state changes, so speeding up or stopping doesn't snap instantly.")]
-    public float rateSmoothTime = 0.5f;
-    [Tooltip("Same idea but specifically for entering/leaving SPRINT, which is the biggest jump (walk 2/s -> sprint 20/s) and the one most likely to feel sudden.")]
-    public float sprintRateSmoothTime = 1.1f;
+    [Tooltip("How fast noise drains back to 0 once nothing is currently making any — NOT a smoothing time, a flat per-second rate.")]
+    public float decayPerSecond = 50f;
 
     [Header("Future Boss Sensing")]
     [Tooltip("At 100 noise, the boss can hear this many meters away.")]
@@ -38,7 +43,6 @@ public class PlayerNoiseMeter : MonoBehaviour
     public float crouchTransitionGraceSeconds = 0.2f;
 
     float currentNoise;
-    float smoothedRate;
     bool wasGroundedLastFrame;
     bool wasJustLanded;
     bool wasWallHit;
@@ -94,7 +98,6 @@ public class PlayerNoiseMeter : MonoBehaviour
             // Tucked inside a locker — silent regardless of whatever was
             // happening the instant before E was pressed.
             currentNoise = 0f;
-            smoothedRate = 0f;
         }
         else
         {
@@ -111,7 +114,6 @@ public class PlayerNoiseMeter : MonoBehaviour
         if (revealedNow && !wasRevealed)
         {
             currentNoise = 0f;
-            smoothedRate = 0f;
         }
         wasRevealed = revealedNow;
     }
@@ -144,51 +146,49 @@ public class PlayerNoiseMeter : MonoBehaviour
     {
         bool inCrouchGrace = Time.time < crouchGraceUntil;
 
+        // Whichever single source is loudest THIS frame — these don't add
+        // together, a landing spike doesn't stack on top of running noise.
+        float eventLevel = 0f;
+
         if (wasJustLanded)
         {
-            if (!inCrouchGrace) currentNoise += landingNoise;
+            if (!inCrouchGrace) eventLevel = Mathf.Max(eventLevel, fallingNoise);
             wasJustLanded = false;
         }
 
         if (wasWallHit)
         {
-            if (!inCrouchGrace) currentNoise += wallHitNoise;
+            if (!inCrouchGrace) eventLevel = Mathf.Max(eventLevel, wallHitNoise);
             wasWallHit = false;
         }
 
-        // Continuous rate (decay/walk/sprint) eases toward its target instead of
-        // snapping instantly, so speeding up, slowing down, or stopping reads as
-        // a smooth, natural transition rather than a sudden gear-shift. Sprint
-        // gets its own (longer) smoothing time since it's the biggest jump.
-        bool sprinting = controller != null && controller.IsSprinting;
-        float targetRate = GetContinuousNoiseRate();
-        float effectiveTargetRate = targetRate > 0f ? targetRate : -quietDecayPerSecond;
-        float smoothTime = sprinting || smoothedRate > walkNoisePerSecond ? sprintRateSmoothTime : rateSmoothTime;
+        eventLevel = Mathf.Max(eventLevel, GetContinuousNoiseLevel());
 
-        // True exponential decay (not a linear dt/tau ratio) so the ease-in
-        // feels the same regardless of frame rate and never jumps in one step.
-        float decay = Mathf.Exp(-Time.deltaTime / Mathf.Max(smoothTime, 0.01f));
-        smoothedRate = Mathf.Lerp(effectiveTargetRate, smoothedRate, decay);
+        if (eventLevel > currentNoise)
+        {
+            // Snap straight up — noise isn't something that ramps in, it's
+            // either happening this frame or it isn't.
+            currentNoise = eventLevel;
+        }
+        else
+        {
+            currentNoise = Mathf.Max(0f, currentNoise - decayPerSecond * Time.deltaTime);
+        }
 
-        currentNoise += smoothedRate * Time.deltaTime;
         currentNoise = Mathf.Clamp(currentNoise, 0f, maxNoise);
     }
 
     // Crouching makes zero noise of its own (no contribution either way) —
-    // it does NOT force the meter to 0; it just decays at the normal rate.
-    float GetContinuousNoiseRate()
+    // it does NOT force the meter to 0; any noise already in flight just
+    // decays at the normal rate, same as going quiet any other way.
+    float GetContinuousNoiseLevel()
     {
         if (controller == null || controller.IsCrouched || !controller.IsGrounded || !HasMovementInput())
         {
             return 0f;
         }
 
-        if (controller.IsSprinting)
-        {
-            return sprintNoisePerSecond;
-        }
-
-        return walkNoisePerSecond;
+        return controller.IsSprinting ? runningNoise : walkingNoise;
     }
 
     void OnControllerColliderHit(ControllerColliderHit hit)

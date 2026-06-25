@@ -10,6 +10,7 @@ public class SoundManager : MonoBehaviour
     private SoundLibrary sfxLibrary;
     [SerializeField]
     private AudioSource sfx2DSource;
+    private float volume = GameAudioSettings.SfxOutputVolume;
 
     private void Awake() {
         if (Instance != null) {
@@ -19,12 +20,13 @@ public class SoundManager : MonoBehaviour
         else {
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            SetVolume(GameAudioSettings.SfxSlider);
         }
     }
 
     public void PlaySound3D(AudioClip clip, Vector3 pos) {
         if (clip != null) {
-            AudioSource.PlayClipAtPoint(clip, pos);
+            AudioSource.PlayClipAtPoint(clip, pos, volume);
         }
     }
 
@@ -36,7 +38,13 @@ public class SoundManager : MonoBehaviour
         if (sfxLibrary == null || sfx2DSource == null) return;
 
         AudioClip clip = sfxLibrary.GetClipFromName(soundName);
-        if (clip != null) sfx2DSource.PlayOneShot(clip);
+        if (clip != null) sfx2DSource.PlayOneShot(clip, volume);
+    }
+
+    public void SetVolume(float sliderValue) {
+        GameAudioSettings.SfxSlider = sliderValue;
+        volume = GameAudioSettings.SfxSliderToOutput(sliderValue);
+        if (sfx2DSource != null) sfx2DSource.volume = 1f;
     }
 
 }

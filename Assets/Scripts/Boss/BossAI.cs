@@ -9,10 +9,15 @@ using UnityEngine.AI;
 ///   spot; beyond that it paths (via NavMesh, so it never cuts through walls)
 ///   back toward the player without beelining straight at them.
 ///
-///   WALK (heard) — continuous range check against PlayerNoiseMeter: if the
-///   boss is within the player's current AudibleRangeMeters, it walks toward
-///   the player's live position. The instant the player is out of range again
-///   it drops straight back to PHONE — no lingering timer.
+///   WALK (heard) — PlayerNoiseMeter is event-based now (a snap-to-level on
+///   running/landing/wall-hit, fast decay otherwise), not an accumulating
+///   total. The instant the boss is within the player's current
+///   AudibleRangeMeters it snapshots that position and walks there — and
+///   keeps walking there (not live-tracking) even after the noise itself has
+///   already decayed back to 0, until it actually arrives (or a closer new
+///   noise re-snapshots it). Standing still after one noise spike means the
+///   boss walks to where you USED to be — the player has to keep moving to
+///   keep being tracked in real time.
 ///
 ///   HIDING — a hidden player (PlayerHiding) can't be spotted, and their
 ///   PlayerNoiseMeter is forced to 0, so they can't be heard either. If the
@@ -22,7 +27,14 @@ using UnityEngine.AI;
 ///   walks away (still on the phone animation) instead of idly pacing right
 ///   next to the hiding spot, until it's actually put that distance behind it.
 ///
-///   RUN (spotted) — line-of-sight raycast (blocked by walls, and by hiding).
+///   RUN (spotted) — line-of-sight raycast (blocked by walls, and by hiding),
+///   but the ANGLE that counts depends on whether the player is detectable:
+///     • Detectable (making any noise right now, OR phone torch on) — spotted
+///       from ANY angle the boss can see them, front or back. Being loud or
+///       lit up draws the eye even from the side/behind — never shown to the
+///       player as a meter, it just quietly widens what counts as "seen."
+///     • Silent and torch off — only spotted within the boss's forward
+///       vision cone (forwardSightHalfAngle either side of where it's facing).
 ///   The moment the player is actually spotted (not on every frame Run stays
 ///   active, and not for the distress override below) it screams once, then
 ///   charges the last-seen position at full speed; if sight is lost it keeps
@@ -32,6 +44,15 @@ using UnityEngine.AI;
 ///   DISTRESS (phone dead, set externally by PlayerStats) overrides everything
 ///   and beelines the player's exact live position. No scream — that's reserved
 ///   for an actual visual spotting.
+///
+///   DIFFICULTY (GameSessionSettings.Difficulty, set from the main menu) —
+///   applied once in ApplySavedDifficulty() at Awake(). The game itself never
+///   changes between difficulties, only how fast/far the boss is: a starting
+///   speed multiplier on phone/walk/run, how fast that multiplier compounds
+///   per minute (escalationFactor, same 1-minute cadence on all three), the
+///   sight/hearing range multipliers, and how forgiving the exhaustion window
+///   is. See ApplySavedDifficulty() for the exact numbers and the reasoning
+///   behind each.
 ///
 ///   EXHAUSTION — running continuously (Run mode, including distress) for
 ///   tiredAfterRunningSeconds forces a tiredDurationSeconds recovery: locked
@@ -104,8 +125,12 @@ public class BossAI : MonoBehaviour
     public bool requireLineOfSight = true;
     [Tooltip("A hidden player (PlayerHiding) can't be spotted.")]
     public bool respectsHiding = true;
+    [Tooltip("Half-angle of the boss's forward vision cone. A SILENT, non-torch player is only spotted within this many degrees of dead-ahead; a detectable one (noisy or torch on) can be spotted at any angle.")]
+    public float forwardSightHalfAngle = 60f;
     [Tooltip("Distance from the last-seen spot at which the boss gives up investigating and drops back down.")]
     public float investigateArriveDistance = 1.5f;
+    [Tooltip("Distance from the last-HEARD spot at which the boss gives up tracking a sound and drops back down.")]
+    public float soundArriveDistance = 1.5f;
 
     [Header("Hiding — give up and back off")]
     [Tooltip("Once the boss isn't running or hearing anything (search timed out / player ducked into a hide spot), if it's still within this distance of a HIDDEN player it deliberately walks away — phone animation, not idle wander on the spot — until it clears this distance.")]
@@ -127,16 +152,22 @@ public class BossAI : MonoBehaviour
     public float tiredSpeedMultiplier = 0.5f;
 
     [Header("Speed Escalation Over Time")]
-    [Tooltip("Uses GameTimer's elapsed seconds — the visible stopwatch on screen, which pauses during dialogue — never level-load or any other clock.")]
+    [Tooltip("Uses GameTimer's elapsed seconds — the visible stopwatch on screen, which pauses during dialogue — never level-load or any other clock. All three of these are overwritten by ApplySavedDifficulty() at Awake() — the values here are just the Medium/baseline defaults shown for reference.")]
     public GameTimer gameTimer;
-    public float escalationDelay = 60f;
+    public float escalationDelay = 0f;
     public float escalationInterval = 60f;
-    [Tooltip("Compounds every escalationInterval seconds of the timer: 1.1 = +10% speed per minute.")]
-    public float escalationFactor = 1.1f;
+    [Tooltip("Compounds every escalationInterval seconds of the timer: 1.12 = +12% speed per minute.")]
+    public float escalationFactor = 1.12f;
 
     [Header("Noise Hearing")]
     [Tooltip("Auto-found if left empty. Boss hears the player whenever it's within their current AudibleRangeMeters.")]
     public PlayerNoiseMeter noiseMeter;
+    [Tooltip("Multiplies the player's AudibleRangeMeters for hearing purposes only — set per-difficulty so Hard hears from further away without changing how loud the player themselves is.")]
+    public float hearingRangeMultiplier = 1f;
+
+    [Header("Detectability")]
+    [Tooltip("Auto-found if left empty. Used only to check phoneTorchActive — a lit torch counts as detectable for spotting purposes, same as making noise, with nothing shown to the player about it.")]
+    public PlayerStats playerStats;
 
     [Header("Audio — Movement Loops (clips only, sources are built at runtime)")]
     public AudioClip phoneClip;
@@ -198,6 +229,9 @@ public class BossAI : MonoBehaviour
 
     Vector3 _lastSeenPos;
     bool _investigating;
+
+    Vector3 _lastHeardPos;
+    bool _trackingSound;
 
     Vector3 _wanderTarget;
     float _nextWanderTime;
@@ -270,37 +304,77 @@ public class BossAI : MonoBehaviour
         if (player != null)
         {
             _playerHiding = player.GetComponent<PlayerHiding>();
+            if (playerStats == null) playerStats = player.GetComponent<PlayerStats>();
             _lastSeenPos = player.position;
         }
     }
 
+    /// <summary>All three difficulties share the same 1-minute escalation
+    /// cadence (escalationInterval) and start escalating immediately
+    /// (escalationDelay = 0 — GameTimer itself only starts once the intro
+    /// dialogue ends, so there's no need for a second grace period on top).
+    /// What differs is the STARTING speed multiplier, how fast that
+    /// multiplier compounds per minute, detection ranges, and how forgiving
+    /// the exhaustion mechanic is. See the method body for the exact numbers
+    /// — they're listed there, not hidden in a table, so the reasoning for
+    /// each is easy to find later.</summary>
     void ApplySavedDifficulty()
     {
         GameSessionSettings.Load();
 
-        float speedMultiplier = 1f;
-        float sightMultiplier = 1f;
-        float escalationMultiplier = 1f;
+        float startSpeedMultiplier;
+        float sightMultiplier;
+        float hearingMultiplier;
 
         switch (GameSessionSettings.Difficulty)
         {
             case GameDifficulty.Easy:
-                speedMultiplier = 0.85f;
-                sightMultiplier = 0.8f;
-                escalationMultiplier = 0.9f;
+                // Starts at 70% speed, compounds +20%/minute — by the 5-minute
+                // mark (the mission length) that's still only ~1.74x base.
+                startSpeedMultiplier = 0.7f;
+                escalationFactor = 1.2f;
+                sightMultiplier = 0.7f;
+                hearingMultiplier = 0.7f;
+                // Tires out sooner, recovers slower, crawls slower while
+                // tired — Easy gets noticeably more breathing room.
+                tiredAfterRunningSeconds = 7f;
+                tiredDurationSeconds = 7f;
+                tiredSpeedMultiplier = 0.4f;
                 break;
+
             case GameDifficulty.Hard:
-                speedMultiplier = 1.2f;
-                sightMultiplier = 1.25f;
-                escalationMultiplier = 1.15f;
+                // Starts at 120% speed AND compounds the same +20%/minute as
+                // Easy from that higher base — by 5 minutes that's ~3.0x base,
+                // genuinely close to unbeatable by outrunning alone.
+                startSpeedMultiplier = 1.2f;
+                escalationFactor = 1.2f;
+                sightMultiplier = 1.5f;
+                hearingMultiplier = 1.5f;
+                // Takes longer to tire, recovers faster, still brisk while
+                // tired — Hard barely gives you a window.
+                tiredAfterRunningSeconds = 14f;
+                tiredDurationSeconds = 3f;
+                tiredSpeedMultiplier = 0.65f;
+                break;
+
+            default: // Medium — the 1x reference point everything else is relative to.
+                startSpeedMultiplier = 1f;
+                escalationFactor = 1.12f;
+                sightMultiplier = 1f;
+                hearingMultiplier = 1f;
+                tiredAfterRunningSeconds = 10f;
+                tiredDurationSeconds = 5f;
+                tiredSpeedMultiplier = 0.5f;
                 break;
         }
 
-        phoneSpeed *= speedMultiplier;
-        walkSpeed *= speedMultiplier;
-        runSpeed *= speedMultiplier;
+        phoneSpeed *= startSpeedMultiplier;
+        walkSpeed *= startSpeedMultiplier;
+        runSpeed *= startSpeedMultiplier;
         sightRange *= sightMultiplier;
-        escalationFactor *= escalationMultiplier;
+        hearingRangeMultiplier = hearingMultiplier;
+        escalationInterval = 60f;
+        escalationDelay = 0f;
     }
 
     AudioSource CreateLoopSource(AudioClip clip)
@@ -369,9 +443,32 @@ public class BossAI : MonoBehaviour
 
             bool running = spotted || _investigating;
 
-            bool heard = !hidden && !running && noiseMeter != null
-                         && noiseMeter.CurrentNoise > 0f
-                         && dist <= noiseMeter.AudibleRangeMeters;
+            if (running)
+            {
+                // Run takes priority — drop any stale sound memory so that
+                // once the chase ends, Walk gets re-evaluated fresh instead
+                // of resuming a walk to wherever a noise happened pre-chase.
+                _trackingSound = false;
+            }
+
+            bool heardNow = !hidden && !running && noiseMeter != null
+                            && noiseMeter.CurrentNoise > 0f
+                            && dist <= noiseMeter.AudibleRangeMeters * hearingRangeMultiplier;
+
+            if (heardNow)
+            {
+                // Snapshot, not live tracking — keeps heading here even once
+                // the noise itself has already decayed back to 0, until it
+                // actually arrives or a closer new noise re-snapshots it.
+                _lastHeardPos = player.position;
+                _trackingSound = true;
+            }
+            else if (_trackingSound && Vector3.Distance(transform.position, _lastHeardPos) <= soundArriveDistance)
+            {
+                _trackingSound = false;
+            }
+
+            bool heard = !running && _trackingSound;
 
             if (running)
             {
@@ -381,7 +478,7 @@ public class BossAI : MonoBehaviour
             else if (heard)
             {
                 newMode = Mode.Walk;
-                target = player.position;
+                target = _lastHeardPos;
             }
             else
             {
@@ -674,13 +771,26 @@ public class BossAI : MonoBehaviour
     bool IsPlayerSpotted(float dist)
     {
         if (dist > sightRange) return false;
-        if (!requireLineOfSight) return true;
 
         Vector3 origin = transform.position + Vector3.up * 1.5f;
-        Vector3 dir = (player.position + Vector3.up) - origin;
-        if (Physics.Raycast(origin, dir.normalized, out RaycastHit hit, sightRange))
-            return hit.transform == player || hit.transform.IsChildOf(player);
-        return false;
+        Vector3 toPlayer = (player.position + Vector3.up) - origin;
+
+        if (requireLineOfSight)
+        {
+            if (!Physics.Raycast(origin, toPlayer.normalized, out RaycastHit hit, sightRange)) return false;
+            if (hit.transform != player && !hit.transform.IsChildOf(player)) return false;
+        }
+
+        // Detectable (noisy right now, or torch lit) — seen from any angle.
+        // Never surfaced to the player as a meter; it just quietly widens
+        // what counts as "spotted" instead of requiring the forward cone.
+        bool detectable = (noiseMeter != null && noiseMeter.CurrentNoise > 0f)
+                           || (playerStats != null && playerStats.phoneTorchActive);
+        if (detectable) return true;
+
+        // Silent and dark — only spotted dead ahead, within the forward cone.
+        float angle = Vector3.Angle(transform.forward, toPlayer);
+        return angle <= forwardSightHalfAngle;
     }
 
     // =========================================================================
@@ -701,6 +811,7 @@ public class BossAI : MonoBehaviour
         _tiredTimer = 0f;
         _continuousRunTimer = 0f;
         _hasRetreatTarget = false;
+        _trackingSound = false;
         SetRenderersEnabled(true);
         if (player != null) _lastSeenPos = player.position;
     }

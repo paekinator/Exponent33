@@ -87,7 +87,7 @@ public class BossEndScreen : MonoBehaviour
         if (shown) return;
         shown = true;
 
-        LastShiftLeaderboardStore.Record(resultType, survivedSeconds);
+        BackShiftLeaderboardStore.Record(resultType, survivedSeconds);
 
         if (catchText != null)
         {

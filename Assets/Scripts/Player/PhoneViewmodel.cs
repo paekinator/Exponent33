@@ -13,6 +13,8 @@ public class PhoneViewmodel : MonoBehaviour
     public Camera cam;
     public GameObject phonePrefab;
     public PlayerStats stats;
+    [Tooltip("Auto-found if left empty. While hidden, the phone/torch can't be turned on — a lit screen or torch would give away a locker hiding spot.")]
+    public PlayerHiding hiding;
     public KeyCode toggleKey = KeyCode.Alpha1;
     public KeyCode torchKey = KeyCode.T;
     public bool startsHeld = true;
@@ -41,6 +43,7 @@ public class PhoneViewmodel : MonoBehaviour
     {
         if (cam == null) cam = Camera.main;
         if (stats == null) stats = GetComponent<PlayerStats>();
+        if (hiding == null) hiding = GetComponent<PlayerHiding>();
         _isHeld = startsHeld;
 
         if (cam == null || phonePrefab == null) return;
@@ -61,6 +64,16 @@ public class PhoneViewmodel : MonoBehaviour
 
     void Update()
     {
+        if (hiding != null && hiding.isHidden)
+        {
+            // Can't use the phone or torch while hidden — force both off
+            // (in case they were already on when E was pressed) and ignore
+            // toggle input entirely until the player exits hiding.
+            if (_torchOn) SetTorch(false);
+            if (_isHeld) SetHeld(false);
+            return;
+        }
+
         if (Input.GetKeyDown(toggleKey))
         {
             SetHeld(!_isHeld);

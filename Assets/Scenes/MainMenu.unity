@@ -1013,7 +1013,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MusicLibrary
   tracks:
   - trackName: MainMenu
-    clip: {fileID: 8300000, guid: 174a89a00c1644b7b8e12a73df4ac5a3, type: 3}
+    clip: {fileID: 8300000, guid: 30b4da720bc946a49b7046e16d4a4d8b, type: 3}
   - trackName: Game
     clip: {fileID: 8300000, guid: 01983eea20efa4232ab0484ec937817e, type: 3}
 --- !u!82 &237843049

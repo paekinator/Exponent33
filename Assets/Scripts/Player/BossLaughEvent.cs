@@ -90,7 +90,7 @@ public class BossLaughEvent : MonoBehaviour
 
         if (laughClip != null)
         {
-            source.PlayOneShot(laughClip, laughVolume);
+            source.PlayOneShot(laughClip, Mathf.Clamp01(laughVolume * GameAudioSettings.SfxOutputMultiplier));
         }
 
         if (bossAI != null)

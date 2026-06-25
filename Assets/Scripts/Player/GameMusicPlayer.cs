@@ -23,7 +23,7 @@ public class GameMusicPlayer : MonoBehaviour
         source.loop = true;
         source.spatialBlend = 0f;
         source.clip = musicClip;
-        source.volume = startVolume;
+        source.volume = ScaledMusicVolume(startVolume);
         startedAt = Time.time;
 
         PlayIfReady();
@@ -39,7 +39,7 @@ public class GameMusicPlayer : MonoBehaviour
         PlayIfReady();
 
         float ramp = rampSeconds <= 0f ? 1f : Mathf.Clamp01((Time.time - startedAt) / rampSeconds);
-        source.volume = Mathf.Lerp(startVolume, maxVolume, ramp);
+        source.volume = ScaledMusicVolume(Mathf.Lerp(startVolume, maxVolume, ramp));
     }
 
     void PlayIfReady()
@@ -67,5 +67,10 @@ public class GameMusicPlayer : MonoBehaviour
         {
             source.Stop();
         }
+    }
+
+    float ScaledMusicVolume(float baseVolume)
+    {
+        return Mathf.Clamp01(baseVolume * GameAudioSettings.MusicOutputMultiplier);
     }
 }

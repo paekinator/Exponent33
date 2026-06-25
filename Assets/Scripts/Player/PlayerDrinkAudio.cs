@@ -21,7 +21,7 @@ public class PlayerDrinkAudio : MonoBehaviour
         source.playOnAwake = false;
         source.loop = true;
         source.spatialBlend = 0f;
-        source.volume = volume;
+        source.volume = ScaledVolume();
         source.clip = drinkingClip;
     }
 
@@ -44,7 +44,7 @@ public class PlayerDrinkAudio : MonoBehaviour
                 source.Play();
             }
 
-            source.volume = volume;
+            source.volume = ScaledVolume();
         }
         else if (source.isPlaying)
         {
@@ -65,5 +65,10 @@ public class PlayerDrinkAudio : MonoBehaviour
             source.time = 0f;
             source.Play();
         }
+    }
+
+    float ScaledVolume()
+    {
+        return Mathf.Clamp01(volume * GameAudioSettings.SfxOutputMultiplier);
     }
 }

@@ -82,8 +82,8 @@ public class PlayerWalkAudio : MonoBehaviour
         bool sprinting = grounded && controller.IsSprinting;
         bool walking = grounded && !sprinting;
 
-        UpdateLoop(walkSource, walking, walkVolume, fadeInSeconds, fadeOutSeconds);
-        UpdateLoop(sprintSource, sprinting, sprintVolume, sprintFadeInSeconds, sprintFadeOutSeconds);
+        UpdateLoop(walkSource, walking, ScaledVolume(walkVolume), fadeInSeconds, fadeOutSeconds);
+        UpdateLoop(sprintSource, sprinting, ScaledVolume(sprintVolume), sprintFadeInSeconds, sprintFadeOutSeconds);
     }
 
     void UpdateLoop(AudioSource src, bool shouldPlay, float targetVolume, float fadeInTime, float fadeOutTime)
@@ -144,7 +144,7 @@ public class PlayerWalkAudio : MonoBehaviour
 
         if (jumpedFromGround && !wasGrounded && isGrounded && landingClip != null)
         {
-            oneShotSource.PlayOneShot(landingClip, landingVolume);
+            oneShotSource.PlayOneShot(landingClip, ScaledVolume(landingVolume));
             jumpedFromGround = false;
         }
 
@@ -162,7 +162,7 @@ public class PlayerWalkAudio : MonoBehaviour
         {
             if (Mathf.Abs(contact.normal.y) < 0.35f)
             {
-                oneShotSource.PlayOneShot(wallHitClip, wallHitVolume);
+                oneShotSource.PlayOneShot(wallHitClip, ScaledVolume(wallHitVolume));
                 nextWallHitTime = Time.time + wallHitCooldown;
                 return;
             }
@@ -173,8 +173,13 @@ public class PlayerWalkAudio : MonoBehaviour
     {
         oneShotSource.Stop();
         oneShotSource.clip = jumpClip;
-        oneShotSource.volume = jumpVolume;
+        oneShotSource.volume = ScaledVolume(jumpVolume);
         oneShotSource.time = Mathf.Min(jumpStartOffsetSeconds, Mathf.Max(0f, jumpClip.length - 0.01f));
         oneShotSource.Play();
+    }
+
+    float ScaledVolume(float baseVolume)
+    {
+        return Mathf.Clamp01(baseVolume * GameAudioSettings.SfxOutputMultiplier);
     }
 }

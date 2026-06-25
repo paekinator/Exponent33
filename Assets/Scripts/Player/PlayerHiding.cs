@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 public class PlayerHiding : MonoBehaviour
@@ -17,6 +18,13 @@ public class PlayerHiding : MonoBehaviour
     public float maxVerticalLookAngle = 45f;
     public float maxHorizontalLookAngle = 75f;
 
+    [Header("Enter/Exit Sound")]
+    [Tooltip("Played on both entering AND exiting a locker — only the lockerSoundStartTime-to-lockerSoundEndTime slice of the clip, not the whole thing.")]
+    public AudioClip lockerSound;
+    [Range(0f, 1f)] public float lockerSoundVolume = 0.85f;
+    public float lockerSoundStartTime = 0.5f;
+    public float lockerSoundEndTime = 3f;
+
     private Vector3 originalPosition;
     private Quaternion originalRotation;
     private Vector3 cameraJointNeutralLocalPosition;
@@ -27,12 +35,21 @@ public class PlayerHiding : MonoBehaviour
     private float hiddenYaw = 0f;
     private float hiddenPitch = 0f;
 
+    private AudioSource lockerAudioSource;
+    private Coroutine lockerSoundRoutine;
+
     void Awake()
     {
         FindMovementController();
         FindCameraJoint();
 
         playerRigidbody = GetComponent<Rigidbody>();
+
+        lockerAudioSource = gameObject.AddComponent<AudioSource>();
+        lockerAudioSource.playOnAwake = false;
+        lockerAudioSource.loop = false;
+        lockerAudioSource.spatialBlend = 0f;
+        lockerAudioSource.clip = lockerSound;
 
         // Captured here (before any movement/headbob has happened) so it's
         // guaranteed to be the true resting position to snap back to on hide.
@@ -92,6 +109,7 @@ public class PlayerHiding : MonoBehaviour
         if (isHidden) return;
 
         isHidden = true;
+        PlayLockerSound();
 
         originalPosition = transform.position;
         originalRotation = transform.rotation;
@@ -140,6 +158,7 @@ public class PlayerHiding : MonoBehaviour
         if (!isHidden) return;
 
         isHidden = false;
+        PlayLockerSound();
 
         if (playerRigidbody != null)
         {
@@ -158,6 +177,35 @@ public class PlayerHiding : MonoBehaviour
         {
             movementController.enabled = true;
         }
+    }
+
+    /// <summary>Plays only the lockerSoundStartTime-to-lockerSoundEndTime slice
+    /// of the clip (e.g. 0.5s-3s of a 7s file) rather than the whole thing —
+    /// jumps playback to the start time, then stops it after that slice's
+    /// duration instead of letting it run to the clip's actual end.</summary>
+    void PlayLockerSound()
+    {
+        if (lockerSound == null || lockerAudioSource == null) return;
+
+        if (lockerSoundRoutine != null)
+        {
+            StopCoroutine(lockerSoundRoutine);
+        }
+
+        lockerAudioSource.clip = lockerSound;
+        lockerAudioSource.time = Mathf.Clamp(lockerSoundStartTime, 0f, Mathf.Max(0f, lockerSound.length - 0.05f));
+        lockerAudioSource.volume = lockerSoundVolume * GameAudioSettings.SfxOutputMultiplier;
+        lockerAudioSource.Play();
+
+        float sliceDuration = Mathf.Max(0.05f, lockerSoundEndTime - lockerSoundStartTime);
+        lockerSoundRoutine = StartCoroutine(StopAfter(sliceDuration));
+    }
+
+    IEnumerator StopAfter(float seconds)
+    {
+        yield return new WaitForSeconds(seconds);
+        if (lockerAudioSource != null) lockerAudioSource.Stop();
+        lockerSoundRoutine = null;
     }
 
     void HandleHiddenLook()

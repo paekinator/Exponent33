@@ -20,9 +20,9 @@ public class PhoneViewmodel : MonoBehaviour
     public bool startsHeld = true;
 
     [Header("Placement (local to camera)")]
-    public Vector3 localPosition = new Vector3(0.22f, -0.26f, 0.4f);
-    public Vector3 localEulerAngles = new Vector3(18f, -90f, -6f);
-    public Vector3 localScale = new Vector3(1.8f, 1.8f, 1.8f);
+    public Vector3 localPosition = new Vector3(0.28f, -0.34f, 0.58f);
+    public Vector3 localEulerAngles = new Vector3(8f, 178f, -8f);
+    public Vector3 localScale = new Vector3(2.55f, 2.55f, 2.55f);
 
     [Header("Torch")]
     public Vector3 torchLocalPosition = new Vector3(0.18f, -0.08f, 0.28f);

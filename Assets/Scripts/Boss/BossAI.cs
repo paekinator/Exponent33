@@ -5,9 +5,14 @@ using UnityEngine.AI;
 /// BossAI — three animation states, picked every frame by distance/hearing/sight.
 ///
 ///   PHONE (idle) — default. The boss is always aware of the player but stays
-///   on a soft leash: within `leashDistance` it paces/circles near its current
-///   spot; beyond that it paths (via NavMesh, so it never cuts through walls)
-///   back toward the player without beelining straight at them.
+///   on a soft leash: within the CURRENT leash distance it paces/circles near
+///   its current spot; beyond that it paths (via NavMesh, so it never cuts
+///   through walls) back toward the player without beelining straight at
+///   them. That leash isn't fixed — it starts at leashDistance and shrinks by
+///   leashShrinkPerMinute every full minute of GameTimer elapsed, down to a
+///   floor of minLeashDistance (see CurrentLeashDistance()). The boss can't
+///   stay calmly far away forever; lategame it's pinned close enough that any
+///   noise actually has a real chance of reaching it.
 ///
 ///   WALK (heard) — PlayerNoiseMeter is event-based now (a snap-to-level on
 ///   running/landing/wall-hit, fast decay otherwise), not an accumulating
@@ -42,17 +47,24 @@ using UnityEngine.AI;
 ///   falls back to WALK/PHONE.
 ///
 ///   DISTRESS (phone dead, set externally by PlayerStats) overrides everything
-///   and beelines the player's exact live position. No scream — that's reserved
-///   for an actual visual spotting.
+///   and beelines the player's exact live position — including a HIDDEN one;
+///   the hidden/spotted check is skipped entirely for this branch, so a
+///   locker provides zero protection once the phone is dead. Catching also
+///   switches to the larger distressCatchDistance instead of catchDistance,
+///   since the boss's NavMesh stop point can't physically enter a locker's
+///   footprint to reach the exact interior point — close enough during
+///   distress still counts. No scream — that's reserved for an actual visual
+///   spotting.
 ///
 ///   DIFFICULTY (GameSessionSettings.Difficulty, set from the main menu) —
 ///   applied once in ApplySavedDifficulty() at Awake(). The game itself never
 ///   changes between difficulties, only how fast/far the boss is: a starting
 ///   speed multiplier on phone/walk/run, how fast that multiplier compounds
 ///   per minute (escalationFactor, same 1-minute cadence on all three), the
-///   sight/hearing range multipliers, and how forgiving the exhaustion window
-///   is. See ApplySavedDifficulty() for the exact numbers and the reasoning
-///   behind each.
+///   sight/hearing range multipliers, how fast/far the idle leash shrinks
+///   (leashShrinkPerMinute / minLeashDistance), and how forgiving the
+///   exhaustion window is. See ApplySavedDifficulty() for the exact numbers
+///   and the reasoning behind each.
 ///
 ///   EXHAUSTION — running continuously (Run mode, including distress) for
 ///   tiredAfterRunningSeconds forces a tiredDurationSeconds recovery: locked
@@ -64,7 +76,8 @@ using UnityEngine.AI;
 ///   still call for it.
 ///
 ///   CATCH — within catchDistance of the player fires onCatchPlayer (wire to
-///   BossEndScreen.ShowEndScreen()).
+///   BossEndScreen.ShowEndScreen()). Uses distressCatchDistance instead while
+///   distress is active (see DISTRESS below).
 ///
 /// AUDIO: builds its own AudioSources at runtime (phone/walk/run loops +
 /// scream one-shot) — just drag clips into the fields below, nothing to add
@@ -112,8 +125,12 @@ public class BossAI : MonoBehaviour
     public float runSpeed = 5f;
 
     [Header("State 1 — Idle Leash")]
-    [Tooltip("Always-aware leash: within this distance the boss just paces near its spot; beyond it, it paths back toward the player.")]
+    [Tooltip("Always-aware leash: within this distance the boss just paces near its spot; beyond it, it paths back toward the player. This is the STARTING value — see leashShrinkPerMinute.")]
     public float leashDistance = 70f;
+    [Tooltip("leashDistance shrinks by this much every full minute of GameTimer elapsed (stepped, not gradual — same cadence as the speed escalation). Tightens the boss's idle range over time so late-game it's reliably close enough to actually hear noise instead of calmly idling far away.")]
+    public float leashShrinkPerMinute = 10f;
+    [Tooltip("leashDistance never shrinks below this floor. Same 35m floor on all three difficulties — only the shrink rate differs.")]
+    public float minLeashDistance = 35f;
     [Tooltip("How far from its current spot the boss wanders while pacing.")]
     public float idleWanderRadius = 6f;
     [Tooltip("How often the boss picks a new wander point while pacing.")]
@@ -142,6 +159,8 @@ public class BossAI : MonoBehaviour
     [Header("Distress (phone dead)")]
     [Tooltip("Set by PlayerStats when the player's phone dies. Overrides everything else and beelines the player.")]
     public bool distressActive = false;
+    [Tooltip("Catch distance used INSTEAD OF catchDistance while distress is active — larger, on purpose: the dead phone gives away your exact position, so a locker can't save you just because the boss's NavMesh stop point can't physically enter the locker's footprint. Once the boss is this close during distress, hiding doesn't matter.")]
+    public float distressCatchDistance = 3f;
 
     [Header("Exhaustion (forced recovery walk after sustained running)")]
     [Tooltip("Running continuously for this many seconds (Run mode, including distress) forces a tired recovery period.")]
@@ -340,6 +359,11 @@ public class BossAI : MonoBehaviour
                 tiredAfterRunningSeconds = 7f;
                 tiredDurationSeconds = 7f;
                 tiredSpeedMultiplier = 0.4f;
+                // Leash shrinks slower — the boss is allowed to stay further
+                // out for longer, though it still ends at the same 35m floor
+                // as the other difficulties.
+                leashShrinkPerMinute = 7f;
+                minLeashDistance = 35f;
                 break;
 
             case GameDifficulty.Hard:
@@ -355,6 +379,10 @@ public class BossAI : MonoBehaviour
                 tiredAfterRunningSeconds = 14f;
                 tiredDurationSeconds = 3f;
                 tiredSpeedMultiplier = 0.65f;
+                // Leash shrinks faster — pinned to the 35m floor by minute 3,
+                // a full minute earlier than Medium.
+                leashShrinkPerMinute = 13f;
+                minLeashDistance = 35f;
                 break;
 
             default: // Medium — the 1x reference point everything else is relative to.
@@ -365,6 +393,9 @@ public class BossAI : MonoBehaviour
                 tiredAfterRunningSeconds = 10f;
                 tiredDurationSeconds = 5f;
                 tiredSpeedMultiplier = 0.5f;
+                // -10/minute, hits the 35m floor at minute 3:30.
+                leashShrinkPerMinute = 10f;
+                minLeashDistance = 35f;
                 break;
         }
 
@@ -491,7 +522,7 @@ public class BossAI : MonoBehaviour
                 else
                 {
                     _hasRetreatTarget = false;
-                    target = dist > leashDistance ? player.position : GetWanderTarget();
+                    target = dist > CurrentLeashDistance() ? player.position : GetWanderTarget();
                 }
             }
         }
@@ -519,7 +550,8 @@ public class BossAI : MonoBehaviour
         UpdatePantingAudio();
         CheckStuck();
 
-        if (dist <= catchDistance) CatchPlayer();
+        float effectiveCatchDistance = distressActive ? distressCatchDistance : catchDistance;
+        if (dist <= effectiveCatchDistance) CatchPlayer();
     }
 
     // =========================================================================
@@ -579,7 +611,7 @@ public class BossAI : MonoBehaviour
                 _pantingSource.Play();
             }
 
-            _pantingSource.volume = pantingVolume;
+            _pantingSource.volume = ScaledSfxVolume(pantingVolume);
         }
         else if (_pantingSource.isPlaying)
         {
@@ -653,10 +685,10 @@ public class BossAI : MonoBehaviour
 
     void UpdateLoopAudio(Mode activeMode)
     {
-        FadeLoop(_phoneLoop, activeMode == Mode.Phone, phoneVolume);
-        FadeLoop(_walkLoop, activeMode == Mode.Walk, walkVolume);
-        FadeLoop(_runLoop, activeMode == Mode.Run, runVolume);
-        FadeLoop(_emitSource, activeMode == Mode.Walk || activeMode == Mode.Run, emitVolume);
+        FadeLoop(_phoneLoop, activeMode == Mode.Phone, ScaledSfxVolume(phoneVolume));
+        FadeLoop(_walkLoop, activeMode == Mode.Walk, ScaledSfxVolume(walkVolume));
+        FadeLoop(_runLoop, activeMode == Mode.Run, ScaledSfxVolume(runVolume));
+        FadeLoop(_emitSource, activeMode == Mode.Walk || activeMode == Mode.Run, ScaledSfxVolume(emitVolume));
     }
 
     void FadeLoop(AudioSource src, bool shouldPlay, float targetVolume)
@@ -762,6 +794,18 @@ public class BossAI : MonoBehaviour
         if (elapsed < escalationDelay) return 1f;
         int steps = 1 + Mathf.FloorToInt((elapsed - escalationDelay) / Mathf.Max(0.01f, escalationInterval));
         return Mathf.Pow(escalationFactor, steps);
+    }
+
+    /// <summary>leashDistance minus leashShrinkPerMinute for every full minute
+    /// of GameTimer elapsed (stepped at the minute mark, same as the speed
+    /// escalation), clamped to minLeashDistance. Tightening this over time
+    /// means the boss can't stay calmly far away forever — it's increasingly
+    /// pinned close enough that noise actually has a chance of reaching it.</summary>
+    float CurrentLeashDistance()
+    {
+        float elapsed = gameTimer != null ? gameTimer.ElapsedSeconds : 0f;
+        int minutesPassed = Mathf.FloorToInt(elapsed / 60f);
+        return Mathf.Max(minLeashDistance, leashDistance - leashShrinkPerMinute * minutesPassed);
     }
 
     // =========================================================================
@@ -895,7 +939,12 @@ public class BossAI : MonoBehaviour
     void PlayScream()
     {
         if (screamClip == null) return;
-        _screamSource.PlayOneShot(screamClip, screamVolume);
+        _screamSource.PlayOneShot(screamClip, ScaledSfxVolume(screamVolume));
+    }
+
+    float ScaledSfxVolume(float baseVolume)
+    {
+        return Mathf.Clamp(baseVolume * GameAudioSettings.SfxOutputMultiplier, 0f, 6f);
     }
 
     void SetRenderersEnabled(bool on)
@@ -907,7 +956,7 @@ public class BossAI : MonoBehaviour
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(transform.position, leashDistance);
+        Gizmos.DrawWireSphere(transform.position, CurrentLeashDistance());
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, sightRange);
         Gizmos.color = Color.red;

@@ -22,7 +22,7 @@ public class PlayerChargeAudio : MonoBehaviour
         source.playOnAwake = false;
         source.loop = true;
         source.spatialBlend = 0f;
-        source.volume = volume;
+        source.volume = ScaledVolume();
         source.clip = chargingClip;
     }
 
@@ -43,7 +43,7 @@ public class PlayerChargeAudio : MonoBehaviour
                 source.Play();
             }
 
-            source.volume = volume;
+            source.volume = ScaledVolume();
         }
         else if (source.isPlaying)
         {
@@ -54,5 +54,10 @@ public class PlayerChargeAudio : MonoBehaviour
     public void HoldChargeTick()
     {
         lastHoldTickTime = Time.time;
+    }
+
+    float ScaledVolume()
+    {
+        return Mathf.Clamp01(volume * GameAudioSettings.SfxOutputMultiplier);
     }
 }

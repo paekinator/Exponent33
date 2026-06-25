@@ -5,7 +5,7 @@ public static class GameAudioSettings
     public const string MusicSliderKey = "MusicVolume";
     public const string SfxSliderKey = "SFXVolume";
     const string AudioScaleVersionKey = "AudioScaleVersion";
-    const int CurrentAudioScaleVersion = 3;
+    const int CurrentAudioScaleVersion = 4;
     public const float DefaultSliderValue = 0.5f;
     public const float MinMusicVolume = 0.01f;
     public const float MaxMusicVolume = 0.3f;
@@ -26,6 +26,8 @@ public static class GameAudioSettings
 
     public static float MusicOutputVolume => MusicSliderToOutput(MusicSlider);
     public static float SfxOutputVolume => SfxSliderToOutput(SfxSlider);
+    public static float MusicOutputMultiplier => MusicOutputVolume / MusicSliderToOutput(DefaultSliderValue);
+    public static float SfxOutputMultiplier => SfxOutputVolume;
 
     public static float MusicSliderToOutput(float sliderValue)
     {

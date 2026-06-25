@@ -25,7 +25,7 @@ public class PlayerLowWaterPanting : MonoBehaviour
         source.playOnAwake = false;
         source.loop = false;
         source.spatialBlend = 0f;
-        source.volume = volume;
+        source.volume = ScaledVolume();
         source.clip = pantingClip;
     }
 
@@ -55,11 +55,16 @@ public class PlayerLowWaterPanting : MonoBehaviour
                 source.Play();
             }
 
-            source.volume = volume;
+            source.volume = ScaledVolume();
         }
         else if (source.isPlaying)
         {
             source.Stop();
         }
+    }
+
+    float ScaledVolume()
+    {
+        return Mathf.Clamp01(volume * GameAudioSettings.SfxOutputMultiplier);
     }
 }

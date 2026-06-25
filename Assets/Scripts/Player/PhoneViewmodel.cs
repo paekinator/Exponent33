@@ -25,9 +25,9 @@ public class PhoneViewmodel : MonoBehaviour
     [Header("Torch")]
     public Vector3 torchLocalPosition = new Vector3(0.18f, -0.08f, 0.28f);
     public Color torchColor = new Color(1f, 0.92f, 0.72f, 1f);
-    public float torchIntensity = 9f;
-    public float torchRange = 36f;
-    public float torchSpotAngle = 75f;
+    public float torchIntensity = 22f;
+    public float torchRange = 70f;
+    public float torchSpotAngle = 92f;
 
     GameObject _instance;
     Light _torchLight;
@@ -124,6 +124,7 @@ public class PhoneViewmodel : MonoBehaviour
         _torchLight.intensity = torchIntensity;
         _torchLight.range = torchRange;
         _torchLight.spotAngle = torchSpotAngle;
+        _torchLight.innerSpotAngle = torchSpotAngle * 0.72f;
         _torchLight.shadows = LightShadows.Soft;
         _torchLight.enabled = false;
     }

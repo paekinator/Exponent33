@@ -33,6 +33,7 @@ public class IntroDialogueSequencer : MonoBehaviour
         new IntroLine { kind = IntroLine.Kind.Tip, text = "Your company tracks your phone, and when dead, sends distress signals and your boss will immediately know your location. If he knows you are in the backrooms... You will be found and dealt with..." },
         new IntroLine { kind = IntroLine.Kind.Monologue, text = "Ahh, 8:55, shift ends in 5 minutes, I can't go back to the office until shift ends, or I will be found. I have to sneak back right after shift ends in the night meeting, when everyone goes to the other side of the office." },
         new IntroLine { kind = IntroLine.Kind.Mission, text = "Survive for 5 minutes, this is the only way you can make it out alive." },
+        new IntroLine { kind = IntroLine.Kind.Tip, text = "Press T while on your phone to turn on your torch; it drains battery faster!" },
     };
 
     [Header("References (auto-found if left empty)")]

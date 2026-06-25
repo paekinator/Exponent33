@@ -304,7 +304,7 @@ public class BossEndScreen : MonoBehaviour
         switch (resultType)
         {
             case ResultType.Survived:
-                return "PASSED THE LEVEL!!!";
+                return "AVOIDED OVERTIME!";
             case ResultType.Dehydrated:
                 return "OUT OF WATER";
             default:

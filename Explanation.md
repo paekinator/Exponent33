@@ -1,10 +1,11 @@
 # BackShift — Explanation
 
-**BackShift** is a first-person survival horror game. You're hiding in a
-hidden, hot Backrooms-style space under your office, trying to survive 5
-minutes until it's safe to sneak back upstairs — while your body dehydrates,
-your phone (which proves you're still "on shift") drains, and a boss who
-shouldn't even know you're down here keeps getting closer.
+**BackShift** is a first-person survival horror game about avoiding overtime.
+Five minutes before the end of your 9-5, your boss looks ready to ask you to
+stay late, so you hide in a storage closet and accidentally stumble into The
+Backrooms. You're still connected to company wifi, which means you're still on
+company time — now you just need to enjoy the quiet, stay hydrated, keep your
+phone alive, and avoid your boss until clock-off.
 
 ## The loop
 

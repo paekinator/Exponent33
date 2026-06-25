@@ -28,8 +28,8 @@ public class MainMenu : MonoBehaviour
 
     readonly string[] storyLines =
     {
-        "You're in an office working a 9-5 but its more like an 8-9. Its almost clock out time today, but things are busy, and you know that if your manager sees you, he'll ask you to work overtime. You just had a daughter two weeks ago, but your manager and boss don't care.",
-        "All you need to do, is hide until 9 o'clock, and sneak out without making eye contact with your manager. You haven't seen your boss all day, and you're bored, so you open his door, and its empty. There is another door connected to his room. Curiosity takes the better of you, so you look inside, and open the door that your boss has never let anyone else open..."
+        "It's been a long, painful and boring day at the office, the 9-5 feeling excruciatingly long. Luckily you are almost done for the day, but your boss has that look in his eyes like he's going to ask you to do some overtime. The worst possible outcome of the day.",
+        "All you need to do is hide out until 9 o'clock, and sneak out without being spotted by your boss, and you know of the perfect spot to do that, a small storage closet at the edge of the building.\n\nOnce you have made it into the closet you finally can relax a bit, unfortunately a misjudged step has caused you to trip and you are going to faceplant into metal shelves of a random abandoned storage cabinet...\nOnly you don't, instead you find yourself in the infamous BackRooms."
     };
 
     public void Start()

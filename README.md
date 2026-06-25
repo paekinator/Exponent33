@@ -1,26 +1,32 @@
 # BackShift
 
-A first-person survival horror game about a phone that's tracking you, a body
-that needs water, and a boss who is never quite far enough away.
+Your 9-5 is tiring work, even more so when it's 5 minutes to the end of the
+day and your boss has that look in his eyes like he's going to ask you to do
+some overtime.
+
+Attempting to avoid catching your boss's eye you've managed to stumble into
+The Backrooms, and you know what? You don't get why everyone was so keen to
+escape.
+
+Since you are still connected to your company's wifi, and so getting paid for
+your time, all that is left is to enjoy the peace and quiet, and avoid your
+boss until the end of the day! Although something about this place has made
+the feeling of being caught by him less like the threat of overtime, and more
+lethal? But that's just a weird feeling.
 
 ---
 
 ## 1. Premise
 
-You're an office worker who's found Paul's secret room — a hidden space
-underneath the normal office, hot, disorienting, and clearly not meant to be
-found. You're dehydrating fast. Your company phone is draining faster than it
-should, and it's the kind of phone that **proves you're still on shift**: if
-it dies, it sends a distress signal, your boss finds out exactly where you
-are, and he comes looking.
+You're an office worker trying to avoid one last overtime request. Five
+minutes before clock-off, you duck into a storage closet at the edge of the
+building, trip, and somehow land in the infamous Backrooms. You're still on
+company wifi, so technically you're still getting paid. Now all you need to do
+is stay hydrated, keep the company phone alive, and avoid your boss until the
+shift is officially over.
 
-It's 8:55. Shift ends in five minutes. You can't go back upstairs until the
-night meeting pulls everyone to the other side of the office — so you wait it
-out down here, keeping yourself hydrated, your phone charged, and yourself out
-of sight, until the timer runs out and it's safe to sneak back.
-
-Twenty seconds after you arrive, you hear him. Laughing. On the phone. Closer
-than you'd like.
+Twenty seconds after you arrive, you hear him. Paul. On the phone. Closer than
+you'd like.
 
 ## 2. Genre
 

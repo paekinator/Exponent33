@@ -27,13 +27,10 @@ public class IntroDialogueSequencer : MonoBehaviour
 
     public List<IntroLine> lines = new List<IntroLine>
     {
-        new IntroLine { kind = IntroLine.Kind.Monologue, text = "Wow, so this is Paul's secret room. No wonder he hid it from everyone... What is this? Why is it so hot? I am dehydrating so fast..." },
-        new IntroLine { kind = IntroLine.Kind.Tip, text = "Make sure you keep hydrated! This room is hot, and if you faint, you might not wake up..." },
-        new IntroLine { kind = IntroLine.Kind.Monologue, text = "My phone battery is draining so fast, visibility is bad but I can use my torch to see if needed. I need to keep my phone charged, otherwise it will send the distress signal and get me caught..." },
-        new IntroLine { kind = IntroLine.Kind.Tip, text = "Your company tracks your phone, and when dead, sends distress signals and your boss will immediately know your location. If he knows you are in the backrooms... You will be found and dealt with..." },
-        new IntroLine { kind = IntroLine.Kind.Monologue, text = "Ahh, 8:55, shift ends in 5 minutes, I can't go back to the office until shift ends, or I will be found. I have to sneak back right after shift ends in the night meeting, when everyone goes to the other side of the office." },
-        new IntroLine { kind = IntroLine.Kind.Mission, text = "Survive for 5 minutes, this is the only way you can make it out alive." },
-        new IntroLine { kind = IntroLine.Kind.Tip, text = "Press T while on your phone to turn on your torch; it drains battery faster!" },
+        new IntroLine { kind = IntroLine.Kind.Monologue, text = "So these are the BackRooms huh? Well I'm still connected to the company wifi, so I'm still on company time. This practically feels like a vacation, although I am oddly parched." },
+        new IntroLine { kind = IntroLine.Kind.Monologue, text = "Shoot, my phone battery is draining fast, I can use my phone torch to help me see a little, but if my phone dies my boss will definitely know I'm not working and get me caught..." },
+        new IntroLine { kind = IntroLine.Kind.Tip, text = "Your company tracks your phone, and when dead, it'll send a signal out and your boss will immediately know your location and that you are slacking off.\nIf he knows you aren't actually working... You will be found and dealt with..." },
+        new IntroLine { kind = IntroLine.Kind.Monologue, text = "Perfect, 8:55, shift ends in 5 minutes, but there is no way I am risking going back to the office until I am officially clocked off and it will be too late to get me to do overtime. I can probably sneak back in after the big meeting too, when everyone goes to the other side of the office." },
     };
 
     [Header("References (auto-found if left empty)")]

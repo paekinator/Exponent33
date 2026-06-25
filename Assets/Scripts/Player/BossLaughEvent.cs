@@ -29,12 +29,7 @@ public class BossLaughEvent : MonoBehaviour
         new IntroDialogueSequencer.IntroLine
         {
             kind = IntroDialogueSequencer.IntroLine.Kind.Monologue,
-            text = "WHAT, thats Paul talking. I can't be caught here. It will be too loud to leave now, the door is so creaky and I think he has cameras there. My only way is to leave after he leaves. He always does an office check right after shift ends, that is my only way"
-        },
-        new IntroDialogueSequencer.IntroLine
-        {
-            kind = IntroDialogueSequencer.IntroLine.Kind.Tip,
-            text = "Your mission now: Survive until shift ends, your only way of escape is to wait for your boss to leave..."
+            text = "Wait what, that's my boss Paul. I can't be caught not at my desk. But It will be too obvious to leave now, and I'll probably make too much noise. The best move is just to avoid him for the next 5 minutes, he always does an office sweep at 5 on the dot to get people to do extra work. That'll be the perfect time to sneak out after he's gone."
         },
     };
 

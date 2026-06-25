@@ -2,8 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.Audio;
 using UnityEngine.UI;
-
-// inspo: https://www.youtube.com/watch?v=B40xBPXK97A
+using TMPro;
 
 public class MainMenu : MonoBehaviour
 {
@@ -11,13 +10,13 @@ public class MainMenu : MonoBehaviour
 
     public Slider musicSlider;
     public Slider sfxSlider;
-
-
+    
     public void Start() {
         LoadVolume();
         MusicManager.Instance.PlayMusic("MainMenu", 0f);
     }
-    public void Play() {
+
+    public void Play(int difficulty) {
         SceneManager.LoadScene("Game");
         MusicManager.Instance.PlayMusic("Game", 0.5f);
     }
@@ -26,7 +25,6 @@ public class MainMenu : MonoBehaviour
         SceneManager.LoadScene("MainMenu");
         MusicManager.Instance.PlayMusic("MainMenu", 0.5f);
     }
-
 
     public void Quit() {
         Application.Quit();
@@ -54,4 +52,5 @@ public class MainMenu : MonoBehaviour
         musicSlider.value = (float)PlayerPrefs.GetFloat("MusicVolume");
         sfxSlider.value = (float)PlayerPrefs.GetFloat("SFXVolume");
     }
+
 }

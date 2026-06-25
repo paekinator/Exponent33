@@ -906,7 +906,13 @@ PlayerSettings:
   XboxOneXTitleMemory: 8
   XboxOneOverrideIdentityName: 
   XboxOneOverrideIdentityPublisher: 
-  cloudServicesEnabled: {}
+  cloudServicesEnabled:
+    Build: 0
+    Game Performance: 0
+    Legacy Analytics: 0
+    Purchasing: 0
+    UDP: 0
+    Unity Ads: 0
   luminIcon:
     m_Name: 
     m_ModelFolderPath: 
@@ -929,11 +935,11 @@ PlayerSettings:
   activeInputHandler: 2
   windowsGamepadBackendHint: 0
   enableDirectStorage: 0
-  cloudProjectId: cc1c205b-fda3-43bf-b625-a24d1cd30f14
+  cloudProjectId: 2312a42b-7e8f-4535-86f7-be188fae2101
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
   projectName: My project (2)
-  organizationId: hajinpaek
+  organizationId: mollyhmenziesmqpwi2yf
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
